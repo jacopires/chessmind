@@ -42,9 +42,13 @@ const ChessPiece = ({ type, color, className = '' }: ChessPieceProps) => {
             alt={`${color} ${type}`}
             className={`w-full h-full drop-shadow-lg select-none ${className}`}
             style={{
-                filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.4))'
+                filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.4))',
+                // @ts-ignore
+                WebkitUserDrag: 'none',
+                userSelect: 'none',
             }}
             draggable={false}
+            onDragStart={(e) => e.preventDefault()}
         />
     );
 };
