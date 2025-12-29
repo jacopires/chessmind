@@ -158,6 +158,7 @@ export default function Game() {
     const [pieces, setPieces] = useState<FloatingPiece[]>([])
     const lastFenRef = useRef<string>('')
     const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null)
+    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
     // Initialize/Sync Pieces
     useEffect(() => {
@@ -305,17 +306,18 @@ export default function Game() {
         }
     }
 
-    // Helper: Get square from pointer (Robust version handling scrolls)
-    const getSquareFromPointer = (point: { x: number; y: number }): Square | null => {
+    // Helper: Get square from piece center (Chess.com style precision)
+    const getSquareFromPieceCenter = (cursorPoint: { x: number; y: number }): Square | null => {
         const boardRect = boardRef.current?.getBoundingClientRect()
         if (!boardRect) return null
 
-        // If point is page-relative (Framer Motion default), subtract scroll
-        // BUT Framer Motion 'info.point' is page relative. 'boardRect' is viewport relative.
-        // We need point relative to viewport OR boardRect relative to page.
-        // Easiest: Convert point to viewport by subtracting window.scroll
-        const viewportX = point.x - window.scrollX
-        const viewportY = point.y - window.scrollY
+        // Calculate piece center from cursor + offset
+        const pieceCenterX = cursorPoint.x + dragOffsetRef.current.x
+        const pieceCenterY = cursorPoint.y + dragOffsetRef.current.y
+
+        // Convert to viewport coordinates
+        const viewportX = pieceCenterX - window.scrollX
+        const viewportY = pieceCenterY - window.scrollY
 
         const relX = viewportX - boardRect.left
         const relY = viewportY - boardRect.top
@@ -606,7 +608,21 @@ export default function Game() {
                                         // Tighter, sharper shadow to feel closer to board
                                         filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))'
                                     }}
-                                    onDragStart={() => {
+                                    onDragStart={(event) => {
+                                        // Calculate offset from cursor to piece center (Chess.com style)
+                                        const pieceElement = event.target as HTMLElement
+                                        const pieceRect = pieceElement.getBoundingClientRect()
+                                        const pieceCenterX = pieceRect.left + pieceRect.width / 2 + window.scrollX
+                                        const pieceCenterY = pieceRect.top + pieceRect.height / 2 + window.scrollY
+
+                                        // Store offset: how much to add to cursor to get piece center
+                                        const cursorX = (event as any).clientX + window.scrollX
+                                        const cursorY = (event as any).clientY + window.scrollY
+                                        dragOffsetRef.current = {
+                                            x: pieceCenterX - cursorX,
+                                            y: pieceCenterY - cursorY
+                                        }
+
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
                                         // Calculate legal moves for dots
@@ -614,12 +630,12 @@ export default function Game() {
                                         setLegalMoves(moves.map(m => m.to))
                                     }}
                                     onDrag={(_, info) => {
-                                        // Track drag target for visual feedback
-                                        const hover = getSquareFromPointer(info.point)
+                                        // Track drag target for visual feedback using piece center
+                                        const hover = getSquareFromPieceCenter(info.point)
                                         setDragOverSquare(hover)
                                     }}
                                     onDragEnd={(_, info) => {
-                                        const targetSquare = getSquareFromPointer(info.point)
+                                        const targetSquare = getSquareFromPieceCenter(info.point)
                                         let moved = false
 
                                         // Attempt move if dropped on different valid square (and legal)
