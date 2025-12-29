@@ -158,7 +158,6 @@ export default function Game() {
     const [pieces, setPieces] = useState<FloatingPiece[]>([])
     const lastFenRef = useRef<string>('')
     const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null)
-    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
     // Initialize/Sync Pieces
     useEffect(() => {
@@ -549,7 +548,7 @@ export default function Game() {
                 </div>
 
                 {/* Floating Pieces Layer */}
-                <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-0">
                     <AnimatePresence>
                         {pieces.map((piece) => {
                             const orientation = userColor === 'black' ? 'b' : 'w'
@@ -561,7 +560,7 @@ export default function Game() {
 
                             return (
                                 <React.Fragment key={piece.key}>
-                                    {/* Chess.com style: Ghost piece stays at origin (semi-transparent) - ONLY when dragging */}
+                                    {/* Ghost piece at origin while dragging */}
                                     {isDragging && (
                                         <div
                                             className="absolute pointer-events-none"
@@ -578,114 +577,82 @@ export default function Game() {
                                         </div>
                                     )}
 
-                                    {/* The ACTUAL draggable piece */}
+                                    {/* Draggable piece */}
                                     <motion.div
-                                        key={piece.key}
-                                        layoutId={isDragging ? undefined : piece.key} // Disable layout during drag for free movement
+                                        layoutId={piece.key}
                                         initial={false}
+                                        animate={{
+                                            left: position.left,
+                                            top: position.top,
+                                            scale: 1,
+                                            zIndex: isDragging ? 9999 : 10
+                                        }}
                                         transition={{
                                             type: 'spring',
-                                            stiffness: 700,
-                                            damping: 35,
+                                            stiffness: 500,
+                                            damping: 30,
                                             mass: 0.5
                                         }}
                                         drag={canDrag}
+                                        dragConstraints={boardRef}
                                         dragElastic={0}
                                         dragMomentum={false}
-                                        dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
+                                        dragSnapToOrigin={true}
                                         whileDrag={{
-                                            scale: 1.2,
+                                            scale: 1.15,
                                             zIndex: 9999,
                                             cursor: 'grabbing',
-                                            filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.5))'
+                                            boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
                                         }}
-                                        onDragStart={(event) => {
+                                        onDragStart={() => {
                                             setDraggedPiece(piece)
                                             setSelectedSquare(piece.square)
                                             const moves = game.moves({ square: piece.square, verbose: true })
                                             setLegalMoves(moves.map(m => m.to))
-
-                                            const boardRect = boardRef.current?.getBoundingClientRect()
-                                            if (boardRect) {
-                                                const file = piece.square.charCodeAt(0) - 97
-                                                const rank = parseInt(piece.square[1]) - 1
-                                                const orientation = userColor === 'black' ? 'b' : 'w'
-                                                const colIdx = orientation === 'w' ? file : 7 - file
-                                                const rowIdx = orientation === 'w' ? 7 - rank : rank
-
-                                                const squareW = boardRect.width / 8
-                                                const squareH = boardRect.height / 8
-
-                                                // Calculate Visual Center of the Piece (Viewport relative)
-                                                const centerX = boardRect.left + (colIdx * squareW) + (squareW / 2)
-                                                const centerY = boardRect.top + (rowIdx * squareH) + (squareH / 2)
-
-                                                // Mouse Viewport Position (Robust extraction)
-                                                const e = event as any
-                                                const clientX = e.touches?.[0] ? e.touches[0].clientX : e.clientX
-                                                const clientY = e.touches?.[0] ? e.touches[0].clientY : e.clientY
-
-                                                // Store Offset
-                                                dragOffsetRef.current = {
-                                                    x: centerX - clientX,
-                                                    y: centerY - clientY
-                                                }
-                                            }
                                         }}
-                                        onDrag={(event) => {
+                                        onDrag={(_, info) => {
                                             const boardRect = boardRef.current?.getBoundingClientRect()
                                             if (!boardRect) return
 
-                                            const e = event as any
-                                            const clientX = e.touches?.[0] ? e.touches[0].clientX : e.clientX
-                                            const clientY = e.touches?.[0] ? e.touches[0].clientY : e.clientY
+                                            // Use Framer Motion's point (already accounts for drag offset)
+                                            const x = info.point.x
+                                            const y = info.point.y
 
-                                            // Apply offset to get Piece Center
-                                            const targetX = clientX + dragOffsetRef.current.x
-                                            const targetY = clientY + dragOffsetRef.current.y
+                                            // Calculate which square the piece center is over
+                                            const relX = x - boardRect.left
+                                            const relY = y - boardRect.top
 
-                                            const relX = targetX - boardRect.left
-                                            const relY = targetY - boardRect.top
+                                            const colIdx = Math.floor((relX / boardRect.width) * 8)
+                                            const rowIdx = Math.floor((relY / boardRect.height) * 8)
 
-                                            const fileIdx = Math.floor((relX / boardRect.width) * 8)
-                                            const rankIdx = Math.floor((relY / boardRect.height) * 8)
-
-                                            const orientation = userColor === 'black' ? 'b' : 'w'
-                                            const file = orientation === 'w' ? fileIdx : 7 - fileIdx
-                                            const rank = orientation === 'w' ? 7 - rankIdx : rankIdx
-
-                                            if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+                                            if (colIdx >= 0 && colIdx < 8 && rowIdx >= 0 && rowIdx < 8) {
+                                                const file = orientation === 'w' ? colIdx : 7 - colIdx
+                                                const rank = orientation === 'w' ? 7 - rowIdx : rowIdx
                                                 const hover = `${String.fromCharCode(97 + file)}${rank + 1}` as Square
                                                 setDragOverSquare(hover)
                                             } else {
                                                 setDragOverSquare(null)
                                             }
                                         }}
-                                        onDragEnd={(event) => {
+                                        onDragEnd={(_, info) => {
                                             const boardRect = boardRef.current?.getBoundingClientRect()
 
                                             if (boardRect) {
-                                                const e = event as any
-                                                const clientX = e.changedTouches?.[0] ? e.changedTouches[0].clientX : (e.touches?.[0]?.clientX || e.clientX)
-                                                const clientY = e.changedTouches?.[0] ? e.changedTouches[0].clientY : (e.touches?.[0]?.clientY || e.clientY)
+                                                const x = info.point.x
+                                                const y = info.point.y
 
-                                                const targetX = clientX + dragOffsetRef.current.x
-                                                const targetY = clientY + dragOffsetRef.current.y
+                                                const relX = x - boardRect.left
+                                                const relY = y - boardRect.top
 
-                                                const relX = targetX - boardRect.left
-                                                const relY = targetY - boardRect.top
+                                                const colIdx = Math.floor((relX / boardRect.width) * 8)
+                                                const rowIdx = Math.floor((relY / boardRect.height) * 8)
 
-                                                const fileIdx = Math.floor((relX / boardRect.width) * 8)
-                                                const rankIdx = Math.floor((relY / boardRect.height) * 8)
-
-                                                const orientation = userColor === 'black' ? 'b' : 'w'
-                                                const file = orientation === 'w' ? fileIdx : 7 - fileIdx
-                                                const rank = orientation === 'w' ? 7 - rankIdx : rankIdx
-
-                                                if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+                                                if (colIdx >= 0 && colIdx < 8 && rowIdx >= 0 && rowIdx < 8) {
+                                                    const file = orientation === 'w' ? colIdx : 7 - colIdx
+                                                    const rank = orientation === 'w' ? 7 - rowIdx : rowIdx
                                                     const targetSquare = `${String.fromCharCode(97 + file)}${rank + 1}` as Square
 
-                                                    if (targetSquare && targetSquare !== piece.square) {
+                                                    if (targetSquare !== piece.square) {
                                                         const moves = game.moves({ square: piece.square, verbose: true })
                                                         const isLegal = moves.some(m => m.to === targetSquare)
 
@@ -700,18 +667,12 @@ export default function Game() {
 
                                             setDraggedPiece(null)
                                             setDragOverSquare(null)
-
-                                            // Clear legal moves if invalid move AND user wasn't clicking
-                                            // Actually, for consistency with click-to-move, we should leave them
-                                            // But if drag fails, usually we clear. 
-                                            // The user requested previously: if drag fails, keep dots for click-to-move.
-                                            // So we do nothing here regarding legalMoves.
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation()
                                             if (!isActive) return
 
-                                            if (selectedSquare) {
+                                            if (selectedSquare && selectedSquare !== piece.square) {
                                                 const moves = game.moves({ square: selectedSquare, verbose: true })
                                                 const isLegal = moves.some(m => m.to === piece.square)
 
@@ -723,7 +684,7 @@ export default function Game() {
                                                 }
                                             }
 
-                                            if (piece.color === game.turn()) {
+                                            if (piece.color === game.turn() && canDrag) {
                                                 setSelectedSquare(piece.square)
                                                 const moves = game.moves({ square: piece.square, verbose: true })
                                                 setLegalMoves(moves.map(m => m.to))
@@ -731,19 +692,14 @@ export default function Game() {
                                         }}
                                         style={{
                                             position: 'absolute',
-                                            left: position.left,
-                                            top: position.top,
                                             width: '12.5%',
                                             height: '12.5%',
                                             cursor: canDrag ? 'grab' : 'default',
-                                            zIndex: isDragging ? 100 : 10,
                                             touchAction: 'none',
                                             pointerEvents: 'auto',
-                                            // @ts-ignore - WebkitUserDrag is not in standard types but needed for Chrome/Safari
+                                            // @ts-ignore
                                             WebkitUserDrag: 'none',
-                                            userSelect: 'none',
-                                            MozUserSelect: 'none',
-                                            msUserSelect: 'none'
+                                            userSelect: 'none'
                                         }}
                                     >
                                         <ChessPiece type={piece.type} color={piece.color} />
