@@ -467,6 +467,7 @@ export default function Game() {
                                             if (isLegal) {
                                                 handleMove({ from: selectedSquare, to: square })
                                                 setLegalMoves([])
+                                                setSelectedSquare(null)
                                             } else {
                                                 setSelectedSquare(null)
                                                 setLegalMoves([])
@@ -630,7 +631,6 @@ export default function Game() {
                                     onDragEnd={(_, info) => {
                                         // Chess.com precision: Detect target and handle movement
                                         const boardRect = boardRef.current?.getBoundingClientRect()
-                                        let validMove = false
 
                                         if (boardRect) {
                                             const viewportX = info.point.x - window.scrollX
@@ -655,7 +655,6 @@ export default function Game() {
                                                     if (isLegal) {
                                                         // VALID MOVE: Execute immediately, layoutId handles animation
                                                         handleMove({ from: piece.square, to: targetSquare })
-                                                        validMove = true
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
                                                     }
@@ -663,14 +662,13 @@ export default function Game() {
                                             }
                                         }
 
+
                                         // Clear drag state
                                         setDraggedPiece(null)
                                         setDragOverSquare(null)
 
-                                        // If invalid move, clear legal moves too
-                                        if (!validMove) {
-                                            setLegalMoves([])
-                                        }
+                                        // Clear legal moves only if move succeeded
+                                        // If invalid, keep legal moves so user can click-to-move
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation()
