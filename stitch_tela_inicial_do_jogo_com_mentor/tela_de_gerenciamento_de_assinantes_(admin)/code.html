@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Gerenciamento de Assinantes - ChessAdmin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8b5cf6",       // Violet 500
+                        "primary-hover": "#7c3aed", // Violet 600
+                        "primary-light": "#a78bfa", // Violet 400
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0f0e17", // Deep dark with hint of purple/black
+                        "surface-dark": "#171625",    // Slightly lighter dark
+                        "surface-card": "#1e1c2e",    // For cards/elements
+                        "surface-hover": "#262338",   // Hover state
+                        "border-dark": "#2f2b45",     // Violet-tinted border
+                        "text-main": "#fffffe",
+                        "text-secondary": "#94a1b2",
+                        "text-muted": "#6a6f85"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    boxShadow: {
+                        "glow": "0 0 20px -5px rgba(139, 92, 246, 0.5)",
+                        "card": "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15)"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem", 
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-text-main font-display antialiased overflow-hidden">
+<div class="flex h-screen w-full">
+<aside class="w-72 flex-shrink-0 border-r border-border-dark bg-[#13121d] hidden md:flex flex-col justify-between p-5 h-full relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 pointer-events-none"></div>
+<div class="flex flex-col gap-8 relative z-10">
+<div class="flex gap-3 items-center px-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-10 shadow-lg shadow-primary/30 ring-1 ring-white/10" data-alt="Logo abstrato do ChessAdmin com gradiente azul escuro" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDlzH3v1Mp4oM-5aw6vzpbC7D3qUDgII0Jualgxp66ONXgjAWXeAu3YbZq94_R_uyMGV3ShC3H1yDI6poGas9UxSbk6tDM82qWXnHNNWoxdpnAzcJW21zEIpFco4sJ1p8Qvdv5wMsYanoGxiIymnW6dvda1hQh46IbPHdyIvnmQV9s9ZzP3PlCab68v89-qyMnK_xaCvU3fjgyWvcwQQ9dZ-Rv3xcohVmdCCAwmA_rhqs6RQB7UJ4p1lowTcI-eLty23Rz6POo4gc-B");'>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-lg font-bold leading-normal tracking-wide bg-gradient-to-r from-white to-primary-light bg-clip-text text-transparent">ChessAdmin</h1>
+<p class="text-text-secondary text-xs font-medium tracking-wide">AI MENTOR DASHBOARD</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1.5">
+<a class="flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:bg-surface-hover hover:text-white transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary-light transition-colors" style="font-size: 24px;">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-xl bg-primary/10 text-primary-light border border-primary/20 shadow-[0_0_15px_rgba(139,92,246,0.15)]" href="#">
+<span class="material-symbols-outlined text-primary fill-1" style="font-size: 24px; font-variation-settings: 'FILL' 1;">group</span>
+<span class="text-sm font-bold">Assinantes</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:bg-surface-hover hover:text-white transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary-light transition-colors" style="font-size: 24px;">sports_esports</span>
+<span class="text-sm font-medium">Partidas</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:bg-surface-hover hover:text-white transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary-light transition-colors" style="font-size: 24px;">article</span>
+<span class="text-sm font-medium">Conteúdo</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:bg-surface-hover hover:text-white transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary-light transition-colors" style="font-size: 24px;">settings</span>
+<span class="text-sm font-medium">Configurações</span>
+</a>
+</nav>
+</div>
+<div class="border-t border-border-dark pt-4 px-2 relative z-10">
+<div class="flex items-center gap-3 cursor-pointer hover:bg-surface-hover p-2 rounded-xl transition-colors border border-transparent hover:border-border-dark">
+<div class="size-9 rounded-full bg-gradient-to-tr from-primary to-primary-light flex items-center justify-center text-white font-bold text-xs shadow-md">AD</div>
+<div class="flex flex-col overflow-hidden">
+<p class="text-white text-sm font-semibold truncate">Admin User</p>
+<p class="text-text-secondary text-xs truncate">admin@chess.ai</p>
+</div>
+<span class="material-symbols-outlined text-text-muted ml-auto" style="font-size: 18px;">expand_more</span>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-full overflow-hidden bg-background-dark relative">
+<div class="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+<div class="flex-1 overflow-y-auto z-10 custom-scrollbar">
+<div class="w-full max-w-[1600px] mx-auto p-6 md:p-10 flex flex-col gap-8">
+<div class="flex flex-col gap-6">
+<div class="flex flex-wrap gap-2 items-center">
+<a class="text-text-secondary text-xs font-semibold hover:text-primary transition-colors uppercase tracking-wider" href="#">Home</a>
+<span class="material-symbols-outlined text-border-dark" style="font-size: 14px;">chevron_right</span>
+<span class="text-primary-light text-xs font-bold uppercase tracking-wider">Assinantes</span>
+</div>
+<div class="flex flex-wrap justify-between items-end gap-4">
+<div class="flex flex-col gap-2 max-w-2xl">
+<h2 class="text-white text-3xl md:text-4xl font-black tracking-tight leading-tight">
+                                Gerenciamento de <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-light to-primary">Assinantes</span>
+</h2>
+<p class="text-text-secondary text-base font-light">
+                                Monitore assinaturas, engajamento com o <span class="text-white font-medium">Mentor IA</span> e status dos jogadores.
+                            </p>
+</div>
+<button class="flex items-center justify-center gap-2 rounded-xl h-11 px-6 bg-primary hover:bg-primary-hover text-white text-sm font-bold tracking-wide transition-all shadow-glow hover:shadow-lg hover:-translate-y-0.5 border border-white/10">
+<span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+<span class="whitespace-nowrap">Adicionar Assinante</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<div class="flex flex-col gap-4 rounded-2xl p-6 bg-surface-card border border-border-dark relative overflow-hidden group shadow-card hover:border-primary/30 transition-all">
+<div class="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-white" style="font-size: 120px;">group</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-text-secondary text-sm font-medium mb-1">Total de Assinantes</p>
+<p class="text-white text-4xl font-black tracking-tight">1,240</p>
+</div>
+<div class="bg-primary/10 p-2.5 rounded-xl border border-primary/20">
+<span class="material-symbols-outlined text-primary-light" style="font-size: 24px;">group</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-auto">
+<span class="flex items-center text-[#0bda65] text-xs font-bold bg-[#0bda65]/10 px-2 py-0.5 rounded-full border border-[#0bda65]/20">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">trending_up</span>
+                                5%
+                            </span>
+<span class="text-text-secondary text-xs">vs mês passado</span>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-2xl p-6 bg-surface-card border border-border-dark relative overflow-hidden group shadow-card hover:border-primary/30 transition-all">
+<div class="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-white" style="font-size: 120px;">check_circle</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-text-secondary text-sm font-medium mb-1">Assinantes Ativos</p>
+<p class="text-white text-4xl font-black tracking-tight">1,100</p>
+</div>
+<div class="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+<span class="material-symbols-outlined text-emerald-400" style="font-size: 24px;">check_circle</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-auto">
+<span class="flex items-center text-[#0bda65] text-xs font-bold bg-[#0bda65]/10 px-2 py-0.5 rounded-full border border-[#0bda65]/20">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">trending_up</span>
+                                3%
+                            </span>
+<span class="text-text-secondary text-xs">retenção saudável</span>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-2xl p-6 bg-surface-card border border-border-dark relative overflow-hidden group shadow-card hover:border-primary/30 transition-all">
+<div class="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-white" style="font-size: 120px;">person_remove</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-text-secondary text-sm font-medium mb-1">Cancelamentos (Mês)</p>
+<p class="text-white text-4xl font-black tracking-tight">140</p>
+</div>
+<div class="bg-orange-500/10 p-2.5 rounded-xl border border-orange-500/20">
+<span class="material-symbols-outlined text-orange-400" style="font-size: 24px;">person_remove</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-auto">
+<span class="flex items-center text-orange-400 text-xs font-bold bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">trending_down</span>
+                                1%
+                            </span>
+<span class="text-text-secondary text-xs">abaixo da média</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col lg:flex-row gap-4 justify-between items-center bg-surface-card p-2 rounded-2xl border border-border-dark shadow-sm">
+<div class="relative w-full lg:max-w-md">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-text-secondary" style="font-size: 20px;">search</span>
+</div>
+<input class="block w-full pl-11 pr-3 py-3 border border-transparent rounded-xl leading-5 bg-[#14131e] text-white placeholder-text-secondary focus:outline-none focus:bg-[#1a1825] focus:ring-1 focus:ring-primary focus:border-primary transition-all sm:text-sm" placeholder="Buscar por nome, email ou ID..." type="text"/>
+</div>
+<div class="flex gap-3 w-full lg:w-auto overflow-x-auto p-1 lg:p-0">
+<select class="form-select bg-[#14131e] border border-transparent hover:border-border-dark text-white text-sm rounded-xl focus:ring-1 focus:ring-primary focus:border-primary py-2.5 px-4 pr-10 cursor-pointer min-w-[150px] transition-colors">
+<option>Todos os Status</option>
+<option>Ativo</option>
+<option>Pendente</option>
+<option>Cancelado</option>
+</select>
+<select class="form-select bg-[#14131e] border border-transparent hover:border-border-dark text-white text-sm rounded-xl focus:ring-1 focus:ring-primary focus:border-primary py-2.5 px-4 pr-10 cursor-pointer min-w-[150px] transition-colors">
+<option>Todos os Planos</option>
+<option>Free</option>
+<option>Club</option>
+<option>Grandmaster</option>
+</select>
+<button class="flex items-center justify-center gap-2 px-5 py-2.5 bg-surface-hover hover:bg-[#2e2a3b] text-white text-sm font-medium rounded-xl transition-colors border border-border-dark whitespace-nowrap shadow-sm group">
+<span class="material-symbols-outlined text-text-secondary group-hover:text-primary-light" style="font-size: 20px;">download</span>
+<span>Exportar</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-card rounded-2xl border border-border-dark overflow-hidden shadow-card">
+<div class="overflow-x-auto">
+<table class="min-w-full divide-y divide-border-dark">
+<thead class="bg-[#15141d]">
+<tr>
+<th class="px-6 py-5 text-left text-xs font-bold text-text-secondary uppercase tracking-wider" scope="col">Usuário</th>
+<th class="px-6 py-5 text-left text-xs font-bold text-text-secondary uppercase tracking-wider" scope="col">Plano</th>
+<th class="px-6 py-5 text-left text-xs font-bold text-text-secondary uppercase tracking-wider" scope="col">Status</th>
+<th class="px-6 py-5 text-left text-xs font-bold text-text-secondary uppercase tracking-wider" scope="col">Início</th>
+<th class="px-6 py-5 text-left text-xs font-bold text-text-secondary uppercase tracking-wider" scope="col">Rating (IA)</th>
+<th class="px-6 py-5 text-right text-xs font-bold text-text-secondary uppercase tracking-wider" scope="col">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark bg-surface-card">
+<tr class="hover:bg-surface-hover transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center">
+<div class="relative">
+<div class="h-11 w-11 flex-shrink-0 rounded-full bg-cover bg-center border-2 border-border-dark group-hover:border-primary/50 transition-colors" data-alt="Foto de perfil de Magnus" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAxfFotXfzzQycUUxGCXKt06_kc8MEzmhXWJmQ1Ip366qxNmG6UNFJ06nrOKdJSklsj4rYuEgHd4PuAqDGN1sf1QuN9wdqW6UeeDSNouhgRNf2DeXOzakYM_Sr9_T9rI2BdoJ2ykiTM6JhXgK6GIvCnnPEC2eTnijL1l41vQzbr1CO6J9QM_v5GIuP4XP2EEOIBAScTbChpWxU6OykuDDcZYnMNHPrqRHtL5q0juSUQ55ybR3Pky3HvTaUZCj73ZwBhEp3v-zKDJOnA");'></div>
+<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-surface-card rounded-full"></div>
+</div>
+<div class="ml-4">
+<div class="text-sm font-bold text-white group-hover:text-primary-light transition-colors">Magnus Carlsen</div>
+<div class="text-xs text-text-secondary">magnus@chess.com</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white font-medium">Grandmaster</span>
+<span class="text-xs text-primary-light bg-primary/10 px-2 py-0.5 rounded w-fit mt-1 border border-primary/20">Anual</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+<span class="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            Ativo
+                                        </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">
+                                        12 Jan 2023
+                                    </td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-sm text-white font-bold tabular-nums">2882</span>
+<div class="flex items-center text-xs text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined" style="font-size: 12px;">arrow_upward</span>
+                                                12
+                                            </div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-text-secondary hover:text-white p-2 rounded-lg hover:bg-[#343048] transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-hover transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center">
+<div class="relative">
+<div class="h-11 w-11 flex-shrink-0 rounded-full bg-cover bg-center border-2 border-border-dark group-hover:border-primary/50 transition-colors" data-alt="Foto de perfil de Hikaru" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAYonI6f2w3J9TH78X_Klx6eMP-vxGnRfa4r6rHNaJ3RYc5i42h8Bh_LwrDFoz1MICp8QsX6TaR4KKP_paKoayJMrGwJD5laWSKcwwVtlmwkukvajPiUJIC9Mftu4nZuNszyjgXOeExA4WFSCC-0MUC3r9rQFKe_Wr9sGR-2gReipQNCplg9towRlV0rRpBu4OjchSt83ujYfHnxnRS9gyLyAObLoiiv4FL5WrTzJA5PQ7dSAJL3nXBNBgzOSWgOTreiUKy1zjhtggV");'></div>
+<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-surface-card rounded-full"></div>
+</div>
+<div class="ml-4">
+<div class="text-sm font-bold text-white group-hover:text-primary-light transition-colors">Hikaru Nakamura</div>
+<div class="text-xs text-text-secondary">hikaru@streaming.com</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white font-medium">Club Player</span>
+<span class="text-xs text-text-secondary bg-[#2a273f] px-2 py-0.5 rounded w-fit mt-1 border border-[#3e3a52]">Mensal</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+<span class="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            Ativo
+                                        </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">
+                                        15 Fev 2023
+                                    </td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-sm text-white font-bold tabular-nums">2768</span>
+<div class="flex items-center text-xs text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined" style="font-size: 12px;">arrow_upward</span>
+                                                5
+                                            </div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-text-secondary hover:text-white p-2 rounded-lg hover:bg-[#343048] transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-hover transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center">
+<div class="relative">
+<div class="h-11 w-11 flex-shrink-0 rounded-full bg-cover bg-center border-2 border-border-dark flex items-center justify-center bg-gradient-to-br from-[#2e2a3b] to-[#1e1c2e] text-primary-light font-bold text-sm shadow-inner group-hover:border-primary/50 transition-colors">
+                                                    JP
+                                                </div>
+</div>
+<div class="ml-4">
+<div class="text-sm font-bold text-white group-hover:text-primary-light transition-colors">Judit Polgar</div>
+<div class="text-xs text-text-secondary">judit.p@chess.org</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white font-medium">Mentor IA Pro</span>
+<span class="text-xs text-primary-light bg-primary/10 px-2 py-0.5 rounded w-fit mt-1 border border-primary/20">Vitalício</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/5">
+<span class="size-1.5 rounded-full bg-amber-400"></span>
+                                            Pendente
+                                        </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">
+                                        10 Mar 2023
+                                    </td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-sm text-white font-bold tabular-nums">2675</span>
+<div class="flex items-center text-xs text-text-secondary font-bold bg-white/5 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined" style="font-size: 12px;">remove</span>
+                                                0
+                                            </div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-text-secondary hover:text-white p-2 rounded-lg hover:bg-[#343048] transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-hover transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center">
+<div class="relative">
+<div class="h-11 w-11 flex-shrink-0 rounded-full bg-cover bg-center border-2 border-border-dark group-hover:border-primary/50 transition-colors" data-alt="Foto de perfil de Fabiano" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCYJu0weu4XrsTdaGSPkbJBjjSwTnqhY-9H5WnXDzifYN7Pue0zlLgDl1lwTbb4hHNGr09304sS_k9G1c23ODgNHBTWfwhdn243_ithk8P9-jRqWjEWSNFrEVm6_xn7fB0A25hQ0ihlD_AZ1q_7dFWI01lK8JRmRn9udqtGKxDfqdHSC3GJwRDVLolPks3hJb_bf4mcYqATpxP6SyRFIHr6ula-5XRrO37WorkOSGyQKjLU1a6vtEChI89jomXvRu_3ETcvyDhsXHAi");'></div>
+<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 border-2 border-surface-card rounded-full"></div>
+</div>
+<div class="ml-4">
+<div class="text-sm font-bold text-white group-hover:text-primary-light transition-colors">Fabiano Caruana</div>
+<div class="text-xs text-text-secondary">fabi@usa.chess</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white font-medium">Club Player</span>
+<span class="text-xs text-text-secondary bg-[#2a273f] px-2 py-0.5 rounded w-fit mt-1 border border-[#3e3a52]">Mensal</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 shadow-sm shadow-red-500/5">
+<span class="size-1.5 rounded-full bg-red-400"></span>
+                                            Cancelado
+                                        </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">
+                                        05 Abr 2023
+                                    </td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-sm text-white font-bold tabular-nums">2805</span>
+<div class="flex items-center text-xs text-red-400 font-bold bg-red-500/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined" style="font-size: 12px;">arrow_downward</span>
+                                                8
+                                            </div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-text-secondary hover:text-white p-2 rounded-lg hover:bg-[#343048] transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-hover transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center">
+<div class="relative">
+<div class="h-11 w-11 flex-shrink-0 rounded-full bg-cover bg-center border-2 border-border-dark group-hover:border-primary/50 transition-colors" data-alt="Foto de perfil de Alireza" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuACO4dZpkBAm4Q6TyrvqMzlQ5UG49DNtGKnP59t4euaPC8vumCHJtbOCyTxEKlASaEVDptO8-dO7NoKi3z7rrJuwsFPIWuP0Wypbm0oDknwaLydCHtOYd3_zG7Tud84VHaH9cb06GbW5qGccLNvaENeBll5W6WecIDPxFxgjoVzfRdsFBTpxUsZSpnhqqu0salGwmKxk1lGMxovIdDG8AI0DYmHAj7GzSIRFuRfvgXOnHIvxsY14CN4DHdssFVa08fLV64dZTlQLHPk");'></div>
+<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-surface-card rounded-full"></div>
+</div>
+<div class="ml-4">
+<div class="text-sm font-bold text-white group-hover:text-primary-light transition-colors">Alireza Firouzja</div>
+<div class="text-xs text-text-secondary">ali.fashion@chess.fr</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white font-medium">Grandmaster</span>
+<span class="text-xs text-primary-light bg-primary/10 px-2 py-0.5 rounded w-fit mt-1 border border-primary/20">Anual</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+<span class="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            Ativo
+                                        </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">
+                                        22 Mai 2023
+                                    </td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-sm text-white font-bold tabular-nums">2777</span>
+<div class="flex items-center text-xs text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined" style="font-size: 12px;">arrow_upward</span>
+                                                24
+                                            </div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-text-secondary hover:text-white p-2 rounded-lg hover:bg-[#343048] transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="bg-surface-card px-4 py-4 flex items-center justify-between border-t border-border-dark sm:px-6">
+<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+<div>
+<p class="text-sm text-text-secondary">
+                                    Mostrando <span class="font-bold text-white">1</span> a <span class="font-bold text-white">5</span> de <span class="font-bold text-white">1,240</span> resultados
+                                </p>
+</div>
+<div>
+<nav aria-label="Pagination" class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
+<a class="relative inline-flex items-center px-2 py-2 rounded-l-lg border border-border-dark bg-[#14131e] text-sm font-medium text-text-secondary hover:bg-surface-hover hover:text-white transition-colors" href="#">
+<span class="sr-only">Anterior</span>
+<span class="material-symbols-outlined" style="font-size: 20px;">chevron_left</span>
+</a>
+<a aria-current="page" class="z-10 bg-primary text-white border-primary relative inline-flex items-center px-4 py-2 border text-sm font-bold shadow-glow" href="#">
+                                        1
+                                    </a>
+<a class="bg-[#14131e] border-border-dark text-text-secondary hover:bg-surface-hover hover:text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors" href="#">
+                                        2
+                                    </a>
+<a class="bg-[#14131e] border-border-dark text-text-secondary hover:bg-surface-hover hover:text-white hidden md:inline-flex relative items-center px-4 py-2 border text-sm font-medium transition-colors" href="#">
+                                        3
+                                    </a>
+<span class="relative inline-flex items-center px-4 py-2 border border-border-dark bg-[#14131e] text-sm font-medium text-text-secondary">
+                                        ...
+                                    </span>
+<a class="bg-[#14131e] border-border-dark text-text-secondary hover:bg-surface-hover hover:text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors" href="#">
+                                        10
+                                    </a>
+<a class="relative inline-flex items-center px-2 py-2 rounded-r-lg border border-border-dark bg-[#14131e] text-sm font-medium text-text-secondary hover:bg-surface-hover hover:text-white transition-colors" href="#">
+<span class="sr-only">Próximo</span>
+<span class="material-symbols-outlined" style="font-size: 20px;">chevron_right</span>
+</a>
+</nav>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

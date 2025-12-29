@@ -1,0 +1,398 @@
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ChessMind AI - Game &amp; Mentor</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8b5cf6", // violet-500
+                        "primary-dark": "#7c3aed", // violet-600
+                        "primary-light": "#a78bfa", // violet-400
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0f0e17", // Darker purple-ish black
+                        "surface-dark": "#1a1625", // Dark purple tint surface
+                        "surface-darker": "#13101b", // Even darker surface
+                        "border-color": "#2e293b", // Purple-tinted border
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                    boxShadow: {
+                        'neon': '0 0 15px rgba(139, 92, 246, 0.3)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #4c4660;
+            border-radius: 20px;
+        }.piece-text {
+            font-weight: 900;
+            paint-order: stroke fill;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: inline-block;
+            font-family: system-ui, -apple-system, sans-serif;line-height: 1;
+        }.piece-black {
+            color: #1a1625;-webkit-text-stroke: 3px #ffffff;text-shadow: 
+                0 4px 0 rgba(0,0,0,0.2),0 0 0 2px #ffffff;filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+        }.piece-white {
+            color: #ffffff;-webkit-text-stroke: 3px #1a1625;text-shadow: 
+                0 4px 0 rgba(0,0,0,0.2);filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+        }
+        .piece-text:hover {
+            transform: scale(1.15) translateY(-5px);
+            filter: drop-shadow(0 12px 6px rgba(0,0,0,0.3));
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white h-screen flex flex-col overflow-hidden">
+<header class="shrink-0 flex items-center justify-between border-b border-white/5 bg-surface-darker/90 backdrop-blur-md px-6 py-4 z-20 shadow-xl relative">
+<div class="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+<div class="flex items-center gap-4 text-white">
+<div class="size-9 flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark rounded-xl text-white shadow-neon">
+<span class="material-symbols-outlined">smart_toy</span>
+</div>
+<h2 class="text-white text-xl font-bold leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-primary-light">ChessMind AI</h2>
+</div>
+<div class="hidden md:flex flex-1 justify-center gap-10">
+<a class="text-gray-400 hover:text-white text-sm font-medium transition-colors hover:scale-105 transform duration-200" href="#">Learn</a>
+<a class="text-gray-400 hover:text-white text-sm font-medium transition-colors hover:scale-105 transform duration-200" href="#">Puzzles</a>
+<a class="text-primary-light text-sm font-bold border-b-2 border-primary pb-1 shadow-[0_4px_12px_-4px_rgba(139,92,246,0.5)]" href="#">Play</a>
+<a class="text-gray-400 hover:text-white text-sm font-medium transition-colors hover:scale-105 transform duration-200" href="#">Community</a>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-xl size-10 hover:bg-surface-dark text-gray-400 hover:text-white transition-all hover:shadow-lg active:scale-95">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="flex items-center justify-center rounded-xl size-10 hover:bg-surface-dark text-gray-400 hover:text-white transition-all hover:shadow-lg active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-border-color"></div>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-primary/30 ring-2 ring-primary/10 shadow-neon cursor-pointer transition-transform hover:scale-105" data-alt="User profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD8cU5gMr__zp2ZQt05r2_8_RPYu2Nu5gVF3W9dPJt4_wkpZg0thFFy7YXfJhQTyXVmNqGun3a_z7mtJqptWBnek_B8VPAnNsu9JdhtIMPmccX2t0ZleZJlSIQIQ8vVwCgT_sYv97_ZJVHRu-XOTf7LMT3tqzRrvUzKoMRud_3ZcL_rbIsgXLbkVFDXFzqPq_aARSna0ZvkPJDTlzEaPIn2FGNaFsx2xwveka2sUpeXDh_hTO3_oBrJgbH_yTO1aUyndF4Yr-CjnyT8");'></div>
+</div>
+</header>
+<main class="flex-1 flex overflow-hidden">
+<div class="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-surface-dark via-background-dark to-background-dark">
+<div class="w-full max-w-[80vh] flex flex-col gap-4">
+<div class="flex items-center justify-between bg-surface-dark p-4 rounded-xl border border-border-color shadow-xl backdrop-blur-sm bg-opacity-80">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat bg-cover rounded-lg size-11 ring-2 ring-primary/40 shadow-lg" data-alt="Stockfish avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD4FztQqUQvcuK_FKFKAB9e6bixio2S779k-mxWwzMYWR7DOnycIMttV5ZQea7lfMvxfLoi3BybWUfZnYKEeTwav00QYodRkednBDmdEB0oaCZdGsuACTJYnD7tEPcfEery_VbmYmPTG7hKdX78JJPv4jaKniRHMyvUSF3Qfb2lDpG_b07osTUjpQB_Fq_siQ9yMM94eh-X-h1wo2BYafn-tnmCiXsSFxUunYPrLa2rwIV38K3Gi8SLynVELB-hyRXY4yAFrnKZDmWz");'></div>
+<div>
+<p class="text-white text-base font-bold flex items-center gap-2">
+                                Stockfish 16
+                                <span class="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-900 to-purple-900 text-[10px] text-indigo-200 font-bold border border-indigo-700/50">BOT</span>
+</p>
+<div class="flex text-gray-400 text-xs gap-3 mt-1">
+<span class="font-medium">Rating: 3200</span>
+<span class="flex items-center text-rose-400 font-medium bg-rose-500/10 px-1.5 rounded"><span class="material-symbols-outlined text-[14px] mr-1">trending_down</span> -2</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<div class="bg-surface-darker px-4 py-2 rounded-lg text-2xl font-mono text-white font-bold border border-border-color shadow-inner tracking-wider">
+                            10:00
+                        </div>
+</div>
+</div>
+<div class="relative w-full aspect-square rounded-lg shadow-2xl overflow-hidden select-none ring-8 ring-surface-darker border-2 border-primary/20 shadow-[0_0_50px_rgba(139,92,246,0.1)]">
+<div class="w-full h-full grid grid-cols-8 grid-rows-8 font-serif">
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#779556] font-sans">8</span>
+<div class="piece-text piece-black">♜</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♞</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♝</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♛</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♚</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♝</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♞</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♜</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#ebecd0] font-sans">7</span>
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-black">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"><span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#779556] font-sans">6</span></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"><span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#ebecd0] font-sans">5</span></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"><span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#779556] font-sans">4</span></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"><span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#ebecd0] font-sans">3</span></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#779556] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative"></div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#779556] font-sans">2</span>
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<div class="piece-text piece-white">♟</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute top-0.5 left-0.5 text-[10px] font-bold text-[#ebecd0] font-sans">1</span>
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#ebecd0] font-sans">a</span>
+<div class="piece-text piece-white">♜</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#779556] font-sans">b</span>
+<div class="piece-text piece-white">♞</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#ebecd0] font-sans">c</span>
+<div class="piece-text piece-white">♝</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#779556] font-sans">d</span>
+<div class="piece-text piece-white">♛</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#ebecd0] font-sans">e</span>
+<div class="piece-text piece-white">♚</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#779556] font-sans">f</span>
+<div class="piece-text piece-white">♝</div>
+</div>
+<div class="bg-[#779556] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#ebecd0] font-sans">g</span>
+<div class="piece-text piece-white">♞</div>
+</div>
+<div class="bg-[#ebecd0] flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl cursor-pointer">
+<span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-[#779556] font-sans">h</span>
+<div class="piece-text piece-white">♜</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between bg-surface-dark p-4 rounded-xl border border-border-color shadow-xl backdrop-blur-sm bg-opacity-80">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat bg-cover rounded-lg size-11 ring-2 ring-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.3)]" data-alt="User avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB7g6O6qIMcC1AA9YMyVgoR5ZJThUqiXSvBqwxyQEtTRrEKSC3WBfhdLnBO3T273HpmXqOmnH4X4GFXaM4bMDe97C5EW_4u_jqnRwC2WcKP4dXhQZYRqzUtyQzyHTSJ3s4gjpbnXZGTYbhpIwoee3Z3diVUVxozDQPNj5_3mBx5-KALboeO_Qti-GThtmcXYcNjgl--0mwmK8fE9Dh81N7FiAzrnOUrk200jq18skzRcA86DZMnNxSDVhDaUqo6jexdxipg3i9DP28d");'></div>
+<div>
+<p class="text-white text-base font-bold">GrandMasterWannabe</p>
+<div class="flex text-gray-400 text-xs gap-3 mt-1">
+<span class="font-medium">Rating: 1542</span>
+<span class="flex items-center text-teal-400 font-medium bg-teal-500/10 px-1.5 rounded"><span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> +12</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<div class="bg-surface-darker px-4 py-2 rounded-lg text-2xl font-mono text-white font-bold border border-border-color shadow-inner tracking-wider">
+                            09:45
+                        </div>
+</div>
+</div>
+</div>
+</div>
+<aside class="w-[440px] bg-surface-dark/95 backdrop-blur-sm border-l border-border-color flex flex-col shrink-0 z-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+<div class="p-5 border-b border-border-color bg-gradient-to-r from-surface-dark to-surface-darker">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-light text-base">analytics</span>
+<span class="text-xs font-bold uppercase tracking-wider text-primary-light/80">Evaluation</span>
+</div>
+<span class="text-white text-sm font-mono bg-surface-darker px-2 py-0.5 rounded border border-border-color shadow-sm">+0.5</span>
+</div>
+<div class="flex h-2.5 w-full rounded-full bg-surface-darker overflow-hidden border border-border-color relative">
+<div class="w-[52%] bg-gradient-to-r from-white to-gray-200 h-full shadow-[0_0_15px_white] relative z-10"></div>
+<div class="absolute inset-0 bg-surface-darker opacity-50"></div>
+</div>
+<p class="text-xs text-gray-400 mt-2.5 text-right font-medium">White has a slight advantage</p>
+</div>
+<div class="flex border-b border-border-color bg-surface-darker">
+<button class="flex-1 py-4 text-sm font-bold text-white border-b-2 border-primary bg-primary/5 transition-all hover:bg-primary/10 relative">
+<span class="flex items-center justify-center gap-2 relative z-10">
+<span class="material-symbols-outlined text-[18px]">school</span>
+                        Mentor
+                    </span>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent opacity-50"></div>
+</button>
+<button class="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-white hover:bg-surface-dark transition-all duration-200">Moves</button>
+<button class="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-white hover:bg-surface-dark transition-all duration-200">Chat</button>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col p-5 gap-6 bg-gradient-to-b from-surface-dark to-background-dark/50">
+<div class="flex gap-4 group">
+<div class="size-10 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shrink-0 shadow-neon group-hover:scale-105 transition-transform duration-300">
+<span class="material-symbols-outlined text-white text-lg">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 max-w-[85%]">
+<span class="text-xs font-bold text-primary-light flex items-center gap-1">AI Coach <span class="size-1.5 rounded-full bg-green-500 animate-pulse"></span></span>
+<div class="bg-surface-darker p-4 rounded-2xl rounded-tl-none text-sm text-gray-200 leading-relaxed border border-border-color shadow-lg backdrop-blur-md">
+                            Good luck! Remember to control the center early. I'll be here to analyze your moves in real-time.
+                        </div>
+</div>
+</div>
+<div class="flex gap-4 group">
+<div class="size-10 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shrink-0 shadow-neon group-hover:scale-105 transition-transform duration-300">
+<span class="material-symbols-outlined text-white text-lg">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 max-w-[85%]">
+<span class="text-xs font-bold text-primary-light">AI Coach</span>
+<div class="bg-surface-darker p-4 rounded-2xl rounded-tl-none text-sm text-gray-200 leading-relaxed border border-border-color shadow-lg">
+<p class="mb-3">Interesting choice with <span class="font-mono text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-bold">Nf3</span>. It develops a piece, but it allows black to pin your knight.</p>
+<p class="font-semibold text-white">Did you consider moving your bishop instead?</p>
+</div>
+<div class="flex flex-wrap gap-2 mt-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary-light hover:text-white text-xs font-bold rounded-xl transition-all border border-primary/20 hover:border-primary/40 hover:shadow-neon">
+<span class="material-symbols-outlined text-[16px]">lightbulb</span> Show Hint
+                            </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-darker hover:bg-surface-dark text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all border border-border-color hover:border-gray-600">
+                                Explain Risk
+                            </button>
+</div>
+</div>
+</div>
+<div class="flex gap-4 flex-row-reverse group">
+<div class="size-10 rounded-2xl bg-gray-700 flex items-center justify-center shrink-0 overflow-hidden shadow-lg border-2 border-surface-darker group-hover:border-primary/50 transition-colors">
+<div class="w-full h-full bg-center bg-cover" data-alt="User avatar small" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAqPZ7aH7ZUNENeTPUlnuRsu0Hn0crpyXHr6lyuZh8aR-gNbLFiffR9lM1y9PC4M2SnnaEjmWEmsf65g7K7tytTHCDs9gbIWMQMvZ4-MtIogFihLotYk042MGBVYkS2jnaxnW7vaZa2o6edJGZVxq8mxq5jt4L1eyU5gn3UvSFlgI3E-qaCNcTcvITrPBzTq4F8xI2bRQ7yKWGZwNuBmH9VcyFgfXw8GvUMuChnMfuhiN3Hvea-p-GlY4F2RXPJS4BSNhr3bGzxf2dZ");'></div>
+</div>
+<div class="flex flex-col gap-1.5 max-w-[85%] items-end">
+<div class="bg-primary-dark p-4 rounded-2xl rounded-tr-none text-sm text-white leading-relaxed shadow-lg bg-gradient-to-br from-primary to-primary-dark border border-primary/30">
+                            I wanted to prepare for castling quickly.
+                        </div>
+</div>
+</div>
+<div class="flex gap-4 group">
+<div class="size-10 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shrink-0 shadow-neon group-hover:scale-105 transition-transform duration-300">
+<span class="material-symbols-outlined text-white text-lg">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 max-w-[85%]">
+<span class="text-xs font-bold text-primary-light">AI Coach</span>
+<div class="bg-surface-darker p-4 rounded-2xl rounded-tl-none text-sm text-gray-200 leading-relaxed border border-border-color shadow-lg">
+                            That makes sense! Just be careful of the d4 push from Black. Would you like to play out a scenario?
+                        </div>
+<div class="flex flex-wrap gap-2 mt-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/20 to-primary-dark/20 hover:from-primary/30 hover:to-primary-dark/30 text-white text-xs font-bold rounded-xl transition-all border border-primary/30 shadow-sm hover:shadow-neon">
+<span class="material-symbols-outlined text-[16px]">play_circle</span>
+                                Yes, let's practice
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<div class="p-5 bg-surface-darker border-t border-border-color relative z-20">
+<div class="relative flex items-center group">
+<div class="absolute inset-0 bg-primary/5 rounded-xl blur-sm group-focus-within:bg-primary/10 transition-colors"></div>
+<input class="w-full bg-surface-dark text-white text-sm rounded-xl pl-5 pr-14 py-4 border border-border-color focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder-gray-500 transition-all relative z-10 shadow-inner" placeholder="Ask your mentor..." type="text"/>
+<button class="absolute right-2 top-2 bottom-2 aspect-square bg-primary hover:bg-primary-dark text-white rounded-lg transition-all flex items-center justify-center z-20 shadow-lg hover:scale-105 active:scale-95">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</button>
+</div>
+</div>
+<div class="p-4 bg-surface-dark border-t border-border-color">
+<div class="grid grid-cols-4 gap-3">
+<button class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-surface-darker text-gray-500 hover:text-rose-400 transition-all group">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">flag</span>
+<span class="text-[10px] font-bold uppercase tracking-wide">Resign</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-surface-darker text-gray-500 hover:text-amber-400 transition-all group">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">handshake</span>
+<span class="text-[10px] font-bold uppercase tracking-wide">Draw</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-surface-darker text-gray-500 hover:text-teal-400 transition-all group">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">undo</span>
+<span class="text-[10px] font-bold uppercase tracking-wide">Takeback</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-surface-darker text-gray-500 hover:text-primary-light transition-all group">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">settings_accessibility</span>
+<span class="text-[10px] font-bold uppercase tracking-wide">Adjust</span>
+</button>
+</div>
+</div>
+</aside>
+</main>
+</body></html>
