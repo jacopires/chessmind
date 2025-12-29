@@ -71,12 +71,23 @@ export function useStockfish() {
         }
     }, [])
 
-    const evaluatePosition = useCallback((fen: string, depth = 15) => {
-        if (!workerRef.current) return
+    const evaluatePosition = useCallback((fen: string, level: number = 1) => {
+        if (!workerRef.current || !isReady) return
         setBestMove(null) // Reset best move on new position
+
+        // Level-based depth (optimized for speed)
+        const depthConfig: Record<number, number> = {
+            1: 8,   // Beginner
+            2: 10,  // Intermediate
+            3: 12,  // Advanced (down from 15 for 50% speed boost)
+            4: 15   // Expert
+        }
+
+        const depth = depthConfig[level] || 12
+
         workerRef.current.postMessage(`position fen ${fen}`)
         workerRef.current.postMessage(`go depth ${depth}`)
-    }, [])
+    }, [isReady])
 
     return { isReady, evaluation, bestMove, evaluatePosition }
 }
