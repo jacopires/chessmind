@@ -740,7 +740,12 @@ export default function Game() {
                                         cursor: canDrag ? 'grab' : 'default',
                                         zIndex: isDragging ? 100 : 10,
                                         touchAction: 'none',
-                                        pointerEvents: 'auto'
+                                        pointerEvents: 'auto',
+                                        // @ts-ignore - WebkitUserDrag is not in standard types but needed for Chrome/Safari
+                                        WebkitUserDrag: 'none',
+                                        userSelect: 'none',
+                                        MozUserSelect: 'none',
+                                        msUserSelect: 'none'
                                     }}
                                 >
                                     <ChessPiece type={piece.type} color={piece.color} />
