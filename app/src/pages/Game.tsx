@@ -7,7 +7,19 @@ import { AIOrb } from '../components/AIOrb'
 import { FloatingFeedback } from '../components/FloatingFeedback'
 import { AdvantageBar } from '../components/AdvantageBar'
 import { useStockfish } from '../lib/stockfish'
-import { analyzePosition } from '../lib/openai'
+import { analyzePosition, type MoveQuality } from '../lib/openai'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+
+// Game Insight Interface
+interface GameInsight {
+    moveNumber: number
+    move: string
+    quality: MoveQuality
+    feedback: string
+    fen: string
+    evaluation: number
+}
 
 type Arrow = {
     from: Square
@@ -16,7 +28,8 @@ type Arrow = {
 }
 
 export default function Game() {
-    const { gameId } = useParams()
+    const { id: gameId } = useParams<{ id: string }>()
+    const { user } = useAuth()
     useEffect(() => {
         if (gameId) console.log('Game ID:', gameId)
     }, [gameId])
@@ -49,6 +62,15 @@ export default function Game() {
     const [showFloatingFeedback, setShowFloatingFeedback] = useState(false)
     const [currentFeedback, setCurrentFeedback] = useState('')
     const [aiOrbActive, setAiOrbActive] = useState(false)
+
+    // Insights Tracking State
+    const [gameInsights, setGameInsights] = useState<GameInsight[]>([])
+    const [moveQualityCounts, setMoveQualityCounts] = useState({
+        best: 0,
+        good: 0,
+        mistake: 0,
+        blunder: 0
+    })
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
@@ -183,7 +205,27 @@ export default function Game() {
                 moveQuality: quality,
                 bestMove: preMoveBestMove
             }).then(analysis => {
-                setCurrentFeedback(analysis)
+                // Save insight
+                const insight: GameInsight = {
+                    moveNumber: game.history().length,
+                    move: lastMoveSan,
+                    quality: analysis.quality,
+                    feedback: analysis.text,
+                    fen: game.fen(),
+                    evaluation: evaluation?.score || 0
+                }
+
+                setGameInsights(prev => [...prev, insight])
+
+                // Update quality counts
+                const qualityKey = analysis.quality.toLowerCase() as keyof typeof moveQualityCounts
+                setMoveQualityCounts(prev => ({
+                    ...prev,
+                    [qualityKey]: prev[qualityKey] + 1
+                }))
+
+                // Display feedback
+                setCurrentFeedback(analysis.text)
                 setShowFloatingFeedback(true)
                 setAiOrbActive(false)
             }).catch(err => {
@@ -192,6 +234,70 @@ export default function Game() {
             })
         }
     }, [evaluation, game, userColor, aiMentor, hasAnalyzed, preMoveScore, preMoveBestMove, lastMoveSan])
+
+    // Save Game to Supabase
+    const saveGameSnapshot = async () => {
+        if (!gameId || !user) {
+            console.log('Cannot save: missing gameId or user')
+            return
+        }
+
+        const finalPGN = game.pgn()
+        const finalResult = game.isGameOver()
+            ? (game.isCheckmate()
+                ? (game.turn() === 'w' ? '0-1' : '1-0')
+                : '1/2-1/2')
+            : '*'
+
+        const totalMoves = gameInsights.length
+        const accuracy = totalMoves > 0
+            ? ((moveQualityCounts.best + moveQualityCounts.good) / totalMoves) * 100
+            : 0
+
+        const analysisSummary = {
+            ...moveQualityCounts,
+            totalMoves,
+            accuracy: Math.round(accuracy * 10) / 10
+        }
+
+        console.log('Saving game snapshot:', { gameId, finalResult, analysisSummary, insightsCount: gameInsights.length })
+
+        const { error } = await supabase
+            .from('games')
+            .update({
+                pgn: finalPGN,
+                result: finalResult,
+                final_position: game.fen(),
+                analysis_summary: analysisSummary,
+                insights: gameInsights,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', gameId)
+
+        if (error) {
+            console.error('Error saving game:', error)
+        } else {
+            console.log('Game saved successfully!')
+        }
+    }
+
+    // Auto-save on game over
+    useEffect(() => {
+        if (game.isGameOver() && gameInsights.length > 0) {
+            console.log('Game over detected, saving...')
+            saveGameSnapshot()
+        }
+    }, [game.isGameOver()])
+
+    // Save on unmount if there are insights
+    useEffect(() => {
+        return () => {
+            if (gameInsights.length > 0) {
+                console.log('Component unmounting, saving insights...')
+                saveGameSnapshot()
+            }
+        }
+    }, [gameInsights])
 
 
     // Handlers

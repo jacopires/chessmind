@@ -11,11 +11,47 @@ export interface AIAnalysisRequest {
     bestMove?: string; // Engine suggestion
 }
 
+export type MoveQuality = 'Best' | 'Good' | 'Mistake' | 'Blunder'
+
 export interface AIAnalysisResponse {
-    analysis: string;
+    text: string;
+    quality: MoveQuality;
 }
 
-export const analyzePosition = async (data: AIAnalysisRequest): Promise<string> => {
+// Helper function to extract move quality from Aristóteles feedback
+function extractQuality(text: string): MoveQuality {
+    const lowerText = text.toLowerCase()
+
+    // Blunders - erros graves
+    if (lowerText.includes('erro grave') ||
+        lowerText.includes('blunder') ||
+        lowerText.includes('desastre') ||
+        lowerText.includes('catastrófico') ||
+        lowerText.includes('presenteou')) {
+        return 'Blunder'
+    }
+
+    // Mistakes - imprecisões
+    if (lowerText.includes('impreciso') ||
+        lowerText.includes('mistake') ||
+        lowerText.includes('poderia ser melhor') ||
+        lowerText.includes('duvidoso')) {
+        return 'Mistake'
+    }
+
+    // Best moves - excelente, brilhante
+    if (lowerText.includes('excelente') ||
+        lowerText.includes('brilhante') ||
+        lowerText.includes('perfeito') ||
+        lowerText.includes('magistral')) {
+        return 'Best'
+    }
+
+    // Default to Good
+    return 'Good'
+}
+
+export const analyzePosition = async (data: AIAnalysisRequest): Promise<AIAnalysisResponse> => {
     // 1. Get Settings from LocalStorage
     const settingsStr = localStorage.getItem('chessmaster_settings');
     if (!settingsStr) {
@@ -70,7 +106,17 @@ export const analyzePosition = async (data: AIAnalysisRequest): Promise<string> 
 
     try {
         const result = await callApi(model);
-        return result.choices[0].message.content;
+        // Extract text and quality
+        if (result.choices && result.choices.length > 0) {
+            const text = result.choices[0].message.content || "Análise não disponível"
+            const quality = extractQuality(text)
+
+            return {
+                text,
+                quality
+            }
+        }
+        throw new Error('Resposta vazia da IA');
 
     } catch (error: any) {
         // If error is related to invalid model (400), try fallback to gpt-4o-mini
@@ -78,7 +124,15 @@ export const analyzePosition = async (data: AIAnalysisRequest): Promise<string> 
             console.warn(`Model ${model} failed, retrying with gpt-4o-mini...`);
             try {
                 const fallbackResult = await callApi('gpt-4o-mini');
-                return fallbackResult.choices[0].message.content;
+                if (fallbackResult.choices && fallbackResult.choices.length > 0) {
+                    const text = fallbackResult.choices[0].message.content || "Análise não disponível"
+                    const quality = extractQuality(text)
+                    return {
+                        text,
+                        quality
+                    }
+                }
+                throw new Error('Resposta vazia da IA no fallback');
             } catch (fallbackError) {
                 console.error("Fallback failed:", fallbackError);
                 throw fallbackError;
