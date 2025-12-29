@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { InsightModal } from '../components/InsightModal'
+import { type MoveQuality } from '../lib/openai'
 
 interface Game {
     id: string
@@ -19,7 +21,16 @@ interface Game {
         totalMoves: number
         accuracy: number
     }
-    insights?: any[]
+    insights?: GameInsight[]
+}
+
+interface GameInsight {
+    moveNumber: number
+    move: string
+    quality: MoveQuality
+    feedback: string
+    fen: string
+    evaluation: number
 }
 
 interface RatingPoint {
@@ -39,6 +50,8 @@ export default function Dashboard() {
         losses: 0,
         currentRating: 1200
     })
+    const [selectedInsight, setSelectedInsight] = useState<GameInsight | null>(null)
+    const [isModalOpen, setIsModalOpen] = useState(false)
 
     useEffect(() => {
         if (user) {
@@ -134,6 +147,30 @@ export default function Dashboard() {
         }
 
         setRatingHistory(history)
+    }
+
+    const handleReviewInsight = (game: Game) => {
+        if (!game.insights || game.insights.length === 0) {
+            console.log('No insights for this game')
+            return
+        }
+
+        // Find worst move (prioritize Blunders, then lowest evaluation)
+        const worstInsight = [...game.insights].sort((a, b) => {
+            // Blunders first
+            if (a.quality === 'Blunder' && b.quality !== 'Blunder') return -1
+            if (a.quality !== 'Blunder' && b.quality === 'Blunder') return 1
+
+            // Then Mistakes
+            if (a.quality === 'Mistake' && b.quality !== 'Mistake') return -1
+            if (a.quality !== 'Mistake' && b.quality === 'Mistake') return 1
+
+            // Finally by evaluation (lowest first)
+            return a.evaluation - b.evaluation
+        })[0]
+
+        setSelectedInsight(worstInsight as GameInsight)
+        setIsModalOpen(true)
     }
 
     // Show recent games (last 5)
@@ -327,8 +364,8 @@ export default function Dashboard() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-2 h-2 rounded-full ${isWin ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
-                                                    isDraw ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]' :
-                                                        'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                                                isDraw ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]' :
+                                                    'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
                                                 }`} />
                                             <div className="flex flex-col">
                                                 <span className="font-medium">Aristóteles AI</span>
@@ -358,6 +395,17 @@ export default function Dashboard() {
                                                 }`}>
                                                 {game.result}
                                             </span>
+                                            {game.insights && game.insights.length > 0 && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleReviewInsight(game)
+                                                    }}
+                                                    className="text-xs text-purple-400 opacity-60 hover:opacity-100 transition-opacity px-2 py-1 rounded bg-purple-500/10 hover:bg-purple-500/20"
+                                                >
+                                                    Rever Insight
+                                                </button>
+                                            )}
                                             <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 transition-opacity">
                                                 arrow_forward
                                             </span>
@@ -374,6 +422,13 @@ export default function Dashboard() {
                     </div>
                 </motion.div>
             </div>
+
+            {/* Insight Modal */}
+            <InsightModal
+                isOpen={isModalOpen}
+                insight={selectedInsight}
+                onClose={() => setIsModalOpen(false)}
+            />
         </div>
     )
 }
