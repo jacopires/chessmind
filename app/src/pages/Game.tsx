@@ -31,6 +31,7 @@ export default function Game() {
     const {
         game,
         gameId,
+        fen, // Reactive state
         userColor,
         aiLevel,
         whiteTime,
@@ -153,14 +154,20 @@ export default function Game() {
         }
     }, [bestMove, game.fen(), userColor, isActive])
 
-    // Extract floating pieces from FEN
+    // Extract floating pieces with STABLE layoutIds for Framer Motion
     const pieces = useMemo((): FloatingPiece[] => {
         const board = game.board()
         const result: FloatingPiece[] = []
 
+        // Track counts for ID generation (e.g., wP-0, wP-1)
+        const counts: Record<string, number> = {}
+
         board.forEach((row, rankIdx) => {
             row.forEach((piece, fileIdx) => {
                 if (piece) {
+                    const typeKey = `${piece.color}${piece.type}`
+                    counts[typeKey] = (counts[typeKey] || 0) + 1
+
                     const file = String.fromCharCode(97 + fileIdx)
                     const rank = `${8 - rankIdx}`
                     const square = `${file}${rank}` as Square
@@ -169,14 +176,16 @@ export default function Game() {
                         square,
                         type: piece.type,
                         color: piece.color,
-                        key: `${piece.color}${piece.type}${square}`
+                        // STABLE KEY based on type/index (e.g., wP-1)
+                        // This allows Framer Motion to animate the piece moving squares
+                        key: `${piece.color}${piece.type}-${counts[typeKey]}`
                     })
                 }
             })
         })
 
         return result
-    }, [game.fen()])
+    }, [fen]) // Depend on reactive FEN
 
     // Helper: Square position
     const getSquarePosition = (square: Square, orientation: 'w' | 'b' = 'w') => {
@@ -374,30 +383,60 @@ export default function Game() {
                     )}
 
                     {/* Legal move indicators (circles) */}
+                    {/* Legal move indicators (circles) */}
                     {legalMoves.map((moveSquare) => {
-                        const file = moveSquare.charCodeAt(0) - 'a'.charCodeAt(0)
-                        const rank = '8'.charCodeAt(0) - moveSquare.charCodeAt(1)
                         const isCapture = game.get(moveSquare) !== null
+                        const rankIdx = 7 - (moveSquare.charCodeAt(1) - '1'.charCodeAt(0))
+                        const fileIdx = moveSquare.charCodeAt(0) - 'a'.charCodeAt(0)
+
+                        // Fix for orientation
+                        const orientation = userColor === 'black' ? 'b' : 'w'
+                        const x = orientation === 'w' ? fileIdx : 7 - fileIdx
+                        const y = orientation === 'w' ? rankIdx : 7 - rankIdx
 
                         return (
                             <div
                                 key={`hint-${moveSquare}`}
-                                className="absolute pointer-events-none flex items-center justify-center"
+                                className="absolute pointer-events-none flex items-center justify-center z-20"
                                 style={{
-                                    left: `${file * 12.5}%`,
-                                    top: `${rank * 12.5}%`,
+                                    left: `${x * 12.5}%`,
+                                    top: `${y * 12.5}%`,
                                     width: '12.5%',
                                     height: '12.5%'
                                 }}
                             >
                                 {isCapture ? (
-                                    <div className="w-full h-full border-4 border-purple-400/60 rounded-md" />
+                                    <div className="w-full h-full border-[6px] border-white/30 rounded-full" />
                                 ) : (
-                                    <div className="w-4 h-4 bg-purple-400/60 rounded-full" />
+                                    <div className="w-4 h-4 bg-white/20 rounded-full backdrop-blur-sm shadow-inner" />
                                 )}
                             </div>
                         )
                     })}
+                </div>
+
+                {/* Board Coordinates */}
+                <div className="absolute top-0 right-0 bottom-0 pointer-events-none">
+                    {ranks.map((rank, i) => (
+                        <span key={rank}
+                            className={`absolute right-1 text-[10px] font-bold ${(i + 7) % 2 === 0 ? 'text-slate-500' : 'text-slate-300'
+                                }`}
+                            style={{ top: `${i * 12.5 + 0.5}%` }}
+                        >
+                            {rank}
+                        </span>
+                    ))}
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+                    {files.map((file, i) => (
+                        <span key={file}
+                            className={`absolute bottom-0.5 text-[10px] font-bold ${i % 2 === 0 ? 'text-slate-300' : 'text-slate-500'
+                                }`}
+                            style={{ left: `${i * 12.5 + 0.5}%` }}
+                        >
+                            {file}
+                        </span>
+                    ))}
                 </div>
 
                 {/* Floating Pieces Layer */}
@@ -414,39 +453,47 @@ export default function Game() {
                             return (
                                 <motion.div
                                     key={piece.key}
-                                    layout={!isDragging}
+                                    layoutId={piece.key} // Use stable ID for liquid animation
                                     initial={false}
                                     transition={{
                                         type: 'spring',
-                                        stiffness: 300,
-                                        damping: 30,
-                                        mass: 0.8
+                                        stiffness: 700, // Higher stiffness for snappier chess feel
+                                        damping: 35,
+                                        mass: 0.5
                                     }}
                                     drag={canDrag}
+                                    dragSnapToOrigin={true} // IMPORTANT: Reverts if not handled
+                                    dragElastic={0.1}
                                     dragMomentum={false}
-                                    dragElastic={0}
                                     whileDrag={{
-                                        scale: 1.2,
+                                        scale: 1.1,
                                         zIndex: 100,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))'
+                                        filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
+                                        // Calculate legal moves for dots
+                                        const moves = game.moves({ square: piece.square, verbose: true })
+                                        setLegalMoves(moves.map(m => m.to))
                                     }}
                                     onDragEnd={(_, info) => {
                                         const targetSquare = getSquareFromPointer(info.point)
+
+                                        // Attempt move if dropped on different valid square
                                         if (targetSquare && targetSquare !== piece.square) {
-                                            // Validate move is legal
                                             const moves = game.moves({ square: piece.square, verbose: true })
                                             const isLegal = moves.some(m => m.to === targetSquare)
+
                                             if (isLegal) {
                                                 handleMove({ from: piece.square, to: targetSquare })
                                             }
                                         }
+
+                                        // Cleanup
                                         setDraggedPiece(null)
-                                        setLegalMoves([]) // Clear legal moves after drag
+                                        setLegalMoves([])
                                     }}
                                     style={{
                                         position: 'absolute',
@@ -455,7 +502,8 @@ export default function Game() {
                                         width: '12.5%',
                                         height: '12.5%',
                                         cursor: canDrag ? 'grab' : 'default',
-                                        pointerEvents: 'auto'
+                                        zIndex: isDragging ? 50 : 10, // Elevate dragged piece
+                                        touchAction: 'none' // Prevent scrolling while dragging
                                     }}
                                 >
                                     <ChessPiece type={piece.type} color={piece.color} />

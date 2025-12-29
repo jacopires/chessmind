@@ -24,6 +24,7 @@ interface NewGameConfig {
 interface GameState {
     gameId: string | null
     game: Chess
+    fen: string
     userColor: 'white' | 'black'
     aiLevel: number
     whiteTime: number
@@ -55,16 +56,14 @@ const GameContext = createContext<GameContextType | undefined>(undefined)
 export function GameProvider({ children }: { children: ReactNode }) {
     const [gameId, setGameId] = useState<string | null>(null)
     const [game] = useState(new Chess())
+    const [fen, setFen] = useState(game.fen()) // Reactive FEN
     const [userColor, setUserColor] = useState<'white' | 'black'>('white')
     const [aiLevel, setAiLevel] = useState(1)
     const [whiteTime, setWhiteTime] = useState(600)
     const [blackTime, setBlackTime] = useState(600)
     const [gameInsights, setGameInsights] = useState<GameInsight[]>([])
     const [moveQualityCounts, setMoveQualityCounts] = useState({
-        best: 0,
-        good: 0,
-        mistake: 0,
-        blunder: 0
+        best: 0, good: 0, mistake: 0, blunder: 0
     })
     const [aiMentor, setAiMentor] = useState(true)
     const [isActive, setIsActive] = useState(false)
@@ -72,6 +71,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const startNewGame = useCallback((config: NewGameConfig) => {
         game.reset()
+        setFen(game.fen())
         setGameId(config.gameId)
         setUserColor(config.color)
         setAiLevel(config.aiLevel)
@@ -88,6 +88,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         try {
             const result = game.move(move)
             if (result) {
+                setFen(game.fen()) // Update FEN to trigger re-renders
                 return true
             }
             return false
@@ -137,6 +138,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const value: GameContextType = {
         gameId,
         game,
+        fen,
         userColor,
         aiLevel,
         whiteTime,
