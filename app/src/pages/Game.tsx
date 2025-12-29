@@ -154,38 +154,107 @@ export default function Game() {
         }
     }, [bestMove, game.fen(), userColor, isActive])
 
-    // Extract floating pieces with STABLE layoutIds for Framer Motion
-    const pieces = useMemo((): FloatingPiece[] => {
-        const board = game.board()
-        const result: FloatingPiece[] = []
+    // State for stable pieces (prevents ID swapping during moves)
+    const [pieces, setPieces] = useState<FloatingPiece[]>([])
+    const lastFenRef = useRef<string>('')
 
-        // Track counts for ID generation (e.g., wP-0, wP-1)
-        const counts: Record<string, number> = {}
+    // Initialize/Sync Pieces
+    useEffect(() => {
+        const currentFen = game.fen()
 
-        board.forEach((row, rankIdx) => {
-            row.forEach((piece, fileIdx) => {
-                if (piece) {
-                    const typeKey = `${piece.color}${piece.type}`
-                    counts[typeKey] = (counts[typeKey] || 0) + 1
+        // Initial Load or Reset
+        if (!lastFenRef.current || game.history().length === 0) {
+            const board = game.board()
+            const newPieces: FloatingPiece[] = []
+            const counts: Record<string, number> = {}
 
-                    const file = String.fromCharCode(97 + fileIdx)
-                    const rank = `${8 - rankIdx}`
-                    const square = `${file}${rank}` as Square
+            board.forEach((row, rankIdx) => {
+                row.forEach((piece, fileIdx) => {
+                    if (piece) {
+                        const typeKey = `${piece.color}${piece.type}`
+                        counts[typeKey] = (counts[typeKey] || 0) + 1
 
-                    result.push({
-                        square,
-                        type: piece.type,
-                        color: piece.color,
-                        // STABLE KEY based on type/index (e.g., wP-1)
-                        // This allows Framer Motion to animate the piece moving squares
-                        key: `${piece.color}${piece.type}-${counts[typeKey]}`
-                    })
-                }
+                        const file = String.fromCharCode(97 + fileIdx)
+                        const rank = `${8 - rankIdx}`
+                        const square = `${file}${rank}` as Square
+
+                        newPieces.push({
+                            square,
+                            type: piece.type,
+                            color: piece.color,
+                            key: `${piece.color}${piece.type}-${counts[typeKey]}`
+                        })
+                    }
+                })
             })
-        })
+            setPieces(newPieces)
+            lastFenRef.current = currentFen
+            return
+        }
 
-        return result
-    }, [fen]) // Depend on reactive FEN
+        // Handle Move Updates (Differential logic)
+        if (currentFen !== lastFenRef.current) {
+            const history = game.history({ verbose: true })
+            const lastMove = history[history.length - 1]
+
+            if (lastMove) {
+                setPieces(prev => {
+                    const next = [...prev]
+
+                    // Find moved piece
+                    const pieceIndex = next.findIndex(p => p.square === lastMove.from)
+                    if (pieceIndex !== -1) {
+                        // Remove captured piece if any (at destination, or en-passant)
+                        let captureSquare = lastMove.to
+                        if (lastMove.flags.includes('e')) { // En Passant
+                            const rankResult = parseInt(captureSquare[1]) + (lastMove.color === 'w' ? -1 : 1)
+                            captureSquare = `${captureSquare[0]}${rankResult}` as Square
+                        }
+
+                        // Filter out captured pieces
+                        const withoutCaptured = next.filter(p => p.square !== captureSquare)
+
+                        // Update moved piece
+                        const movedPiece = withoutCaptured.find(p => p.square === lastMove.from)
+                        if (movedPiece) {
+                            movedPiece.square = lastMove.to
+
+                            // Handling Promotion
+                            if (lastMove.promotion) {
+                                movedPiece.type = lastMove.promotion as any
+                                // Update key to reflect new identity? No, keep stable key for smooth transition
+                                // Or maybe update image but keep ID? 
+                                // Ideally we keep ID but ChessPiece component renders new type.
+                                // Type is part of state, so it updates.
+                            }
+
+                            // Handling Castling
+                            if (lastMove.flags.includes('k') || lastMove.flags.includes('q')) {
+                                const rank = lastMove.color === 'w' ? '1' : '8'
+                                let rookFrom: Square, rookTo: Square
+
+                                if (lastMove.flags.includes('k')) { // Kingside
+                                    rookFrom = `h${rank}` as Square
+                                    rookTo = `f${rank}` as Square
+                                } else { // Queenside
+                                    rookFrom = `a${rank}` as Square
+                                    rookTo = `d${rank}` as Square
+                                }
+
+                                const rook = withoutCaptured.find(p => p.square === rookFrom)
+                                if (rook) rook.square = rookTo
+                            }
+                        }
+                        return withoutCaptured
+                    }
+
+                    // Fallback: If differential fails (shouldn't happen), re-scan
+                    return prev
+                })
+            }
+            lastFenRef.current = currentFen
+        }
+    }, [fen, game])
 
     // Helper: Square position
     const getSquarePosition = (square: Square, orientation: 'w' | 'b' = 'w') => {
