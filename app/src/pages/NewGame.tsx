@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 
@@ -81,8 +82,8 @@ export default function NewGame() {
                 <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px]"></div>
             </div>
 
-            {/* TopNavBar */}
-            <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-dark bg-background-dark/80 backdrop-blur-md px-6 py-3 sticky top-0 z-50">
+            {/* TopNavBar - Floating */}
+            <header className="flex items-center justify-between whitespace-nowrap bg-white/[0.01] backdrop-blur-2xl px-6 py-3 sticky top-0 z-50">
                 <div className="flex items-center gap-4 text-white">
                     <div className="size-8 text-primary flex items-center justify-center">
                         <span className="material-symbols-outlined text-3xl">smart_toy</span>
@@ -115,7 +116,7 @@ export default function NewGame() {
             <main className="flex-1 flex justify-center py-8 px-4 md:px-8">
                 <div className="w-full max-w-[960px] flex flex-col gap-6">
                     {/* PageHeading */}
-                    <div className="flex flex-col gap-2 pb-4 border-b border-border-dark">
+                    <div className="flex flex-col gap-2 pb-6">
                         <h1 className="text-white text-4xl font-black leading-tight tracking-[-0.033em]">Novo Jogo</h1>
                         <p className="text-[#9da1b9] text-base font-normal">Configure sua partida, escolha o tempo e desafie suas habilidades.</p>
                     </div>
@@ -130,7 +131,7 @@ export default function NewGame() {
                                     <span className="flex items-center justify-center bg-primary/20 text-primary w-6 h-6 rounded-full text-xs">1</span>
                                     Ritmo de Jogo
                                 </h3>
-                                <div className="bg-card-dark rounded-xl p-1 border border-border-dark flex flex-wrap sm:flex-nowrap">
+                                <div className="bg-white/[0.02] rounded-xl p-1 flex flex-wrap sm:flex-nowrap gap-1">
                                     <button
                                         onClick={() => { setGameMode('bullet'); setSelectedTime('1') }}
                                         className={`flex-1 flex flex-col items-center justify-center py-3 px-2 rounded-lg gap-1 transition-all ${gameMode === 'bullet' ? 'bg-primary text-white shadow-lg shadow-primary/25 transform scale-[1.02]' : 'text-[#9da1b9] hover:bg-border-dark/50 hover:text-white group'}`}
@@ -169,12 +170,22 @@ export default function NewGame() {
                                     Tempo
                                 </h3>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                                    {/* Dynamic Time Controls based on Mode */}
+                                    {/* Dynamic Time Controls based on Mode - Levitating */}
                                     {timeControls[gameMode as keyof typeof timeControls].map((t) => (
-                                        <button
+                                        <motion.button
                                             key={t}
                                             onClick={() => setSelectedTime(t)}
-                                            className={`relative flex flex-col items-center justify-center h-24 rounded-xl border transition-all ${selectedTime === t ? 'border-2 border-primary bg-primary/10 text-white shadow-inner shadow-primary/20' : 'border-border-dark bg-card-dark text-[#9da1b9] hover:border-gray-500 hover:text-white'}`}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            animate={selectedTime === t ? {
+                                                scale: 1.05,
+                                                boxShadow: '0 25px 50px -12px rgba(168, 85, 247, 0.4)'
+                                            } : {}}
+                                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                            className={`relative flex flex-col items-center justify-center h-24 rounded-xl transition-all ${selectedTime === t
+                                                    ? 'bg-primary/15 text-white'
+                                                    : 'bg-white/[0.02] text-[#9da1b9] hover:bg-white/[0.04] hover:text-white'
+                                                }`}
                                         >
                                             {selectedTime === t && (
                                                 <div className="absolute top-2 right-2 text-primary">
@@ -182,14 +193,20 @@ export default function NewGame() {
                                                 </div>
                                             )}
                                             <span className="text-2xl font-bold">{t.replace('|', ' | ')}</span>
-                                            <span className={`text-xs font-medium ${selectedTime === t ? 'text-primary' : 'opacity-60'}`}>{t.includes('|') ? 'min | inc' : 'min'}</span>
-                                        </button>
+                                            <span className={`text-xs font-medium ${selectedTime === t ? 'text-primary' : 'opacity-60'}`}>
+                                                {t.includes('|') ? 'min | inc' : 'min'}
+                                            </span>
+                                        </motion.button>
                                     ))}
 
-                                    <button className="relative flex flex-col items-center justify-center h-24 rounded-xl border border-border-dark bg-card-dark text-[#9da1b9] hover:border-gray-500 hover:text-white transition-all group">
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="relative flex flex-col items-center justify-center h-24 rounded-xl bg-white/[0.02] text-[#9da1b9] hover:bg-white/[0.04] hover:text-white transition-all group"
+                                    >
                                         <span className="material-symbols-outlined text-3xl mb-1 group-hover:scale-110 transition-transform">tune</span>
                                         <span className="text-xs font-medium">Personalizar</span>
-                                    </button>
+                                    </motion.button>
                                 </div>
                             </div>
 

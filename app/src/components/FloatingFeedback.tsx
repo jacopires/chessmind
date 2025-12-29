@@ -4,12 +4,23 @@ import { useEffect, useState } from 'react'
 interface FloatingFeedbackProps {
     message: string
     isVisible: boolean
+    moveQuality?: 'Best' | 'Good' | 'Mistake' | 'Blunder'
     onDismiss?: () => void
 }
 
-export function FloatingFeedback({ message, isVisible, onDismiss }: FloatingFeedbackProps) {
+export function FloatingFeedback({ message, isVisible, moveQuality, onDismiss }: FloatingFeedbackProps) {
     const [displayedText, setDisplayedText] = useState('')
     const [currentIndex, setCurrentIndex] = useState(0)
+
+    // Quality-based color gradients
+    const qualityColors = {
+        Best: 'from-green-500/10 to-emerald-500/5',
+        Good: 'from-blue-500/10 to-cyan-500/5',
+        Mistake: 'from-amber-500/10 to-yellow-500/5',
+        Blunder: 'from-red-500/10 to-rose-500/5'
+    }
+
+    const currentGradient = moveQuality ? qualityColors[moveQuality] : 'from-purple-500/5 to-transparent'
 
     // Typewriter effect
     useEffect(() => {
@@ -39,8 +50,8 @@ export function FloatingFeedback({ message, isVisible, onDismiss }: FloatingFeed
                     className="absolute top-4 right-4 max-w-md z-50"
                 >
                     <div className="relative backdrop-blur-xl bg-white/[0.02] border border-white/10 rounded-2xl p-6 shadow-ambient-active">
-                        {/* Subtle ambient pulse - only visible when message contains irony indicators */}
-                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500/5 to-transparent" />
+                        {/* Subtle ambient pulse - quality-based color */}
+                        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${currentGradient}`} />
 
                         {/* Content */}
                         <div className="relative">

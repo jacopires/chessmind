@@ -6,6 +6,7 @@ import ChessPiece from '../components/ChessPiece'
 import { AnimatedOrbs } from '../components/AnimatedOrbs'
 import { AIOrb } from '../components/AIOrb'
 import { FloatingFeedback } from '../components/FloatingFeedback'
+import { AdvantageBar } from '../components/AdvantageBar'
 import { useStockfish } from '../lib/stockfish'
 import { analyzePosition } from '../lib/openai'
 
@@ -384,9 +385,9 @@ export default function Game() {
             {/* Animated Background Orbs - The Void */}
             <AnimatedOrbs />
 
-            {/* Left Sidebar (Navigation) - Glass Morphism */}
-            <aside className="w-20 lg:w-64 glass border-r border-white/10 flex flex-col shrink-0 z-20 relative">
-                <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-white/10">
+            {/* Left Sidebar (Navigation) - Floating Minimal */}
+            <aside className="w-20 lg:w-64 bg-white/[0.01] backdrop-blur-2xl flex flex-col shrink-0 z-20 relative">
+                <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6">
                     <Link to="/" className="flex items-center gap-3 group">
                         <div className="size-10 flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark rounded-xl text-white shadow-ambient group-hover:scale-105 transition-transform">
                             <span className="material-symbols-outlined text-xl">smart_toy</span>
@@ -397,26 +398,26 @@ export default function Game() {
 
                 <nav className="flex-1 py-6 flex flex-col gap-2 px-3">
                     <Link to="/new-game" className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined group-hover:text-primary transition-colors">dashboard</span>
+                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">dashboard</span>
                         <span className="hidden lg:block font-medium text-sm">Dashboard</span>
                     </Link>
                     <Link to="/new-game" className="flex items-center gap-3 px-3 py-3 bg-purple-500/10 text-primary-light rounded-xl ring-ambient shadow-ambient">
-                        <span className="material-symbols-outlined">sports_esports</span>
+                        <span className="material-symbols-outlined opacity-100">sports_esports</span>
                         <span className="hidden lg:block font-bold text-sm">Jogar</span>
                     </Link>
                     <Link to="#" className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined group-hover:text-primary transition-colors">school</span>
+                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">school</span>
                         <span className="hidden lg:block font-medium text-sm">Aprender</span>
                     </Link>
                     <Link to="#" className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined group-hover:text-primary transition-colors">extension</span>
+                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">extension</span>
                         <span className="hidden lg:block font-medium text-sm">Puzzles</span>
                     </Link>
                 </nav>
 
-                <div className="p-4 border-t border-white/10 space-y-4">
+                <div className="p-4 space-y-4">
                     <Link to="/settings" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined">settings</span>
+                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 transition-opacity">settings</span>
                         <span className="hidden lg:block font-medium text-sm">Configurações</span>
                     </Link>
 
@@ -448,80 +449,100 @@ export default function Game() {
                     {/* Constrained Container for Perfect Alignment */}
                     <div className="flex flex-col gap-3 w-full max-w-md lg:max-w-none lg:w-auto lg:h-[85vh] lg:aspect-[9/11]">
 
-                        {/* Player Top (Opponent) - Glass Card */}
+
+                        {/* Player Top (Opponent) - Pure Typography */}
                         <motion.div
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className={`glass-strong w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition-all duration-300 ${activeColor === 'b'
-                                ? 'border-purple-500/20 shadow-ambient-active'
-                                : 'border-white/10'
-                                }`}
+                            className="w-full flex items-center justify-between py-2"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className={`size-12 rounded-xl flex items-center justify-center relative transition-all ${activeColor === 'b' ? 'ring-ambient-active shadow-ambient' : 'ring-1 ring-white/10'
-                                    }`}>
-                                    <span className="material-symbols-outlined text-2xl text-gray-400">smart_toy</span>
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-lg text-gray-400">smart_toy</span>
+                                    </div>
                                     {activeColor === 'b' && (
-                                        <div className="absolute -top-1 -right-1 size-3 bg-green-500 rounded-full animate-pulse" />
+                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
                                     )}
                                 </div>
                                 <div>
-                                    <div className={`text-sm font-bold ${activeColor === 'b' ? 'text-purple-300' : 'text-gray-300'}`}>
-                                        Aristóteles (Nível 1)
-                                    </div>
-                                    <div className="text-xs text-gray-500 font-mono">Rating: 3200</div>
+                                    <h3 className="text-sm font-bold text-gray-200">Aristóteles (Nível 1)</h3>
+                                    <p className="text-xs opacity-50 font-mono">3200</p>
                                 </div>
                             </div>
-                            <div className={`px-4 py-2 rounded-xl font-mono text-xl font-bold tracking-tight transition-all ${activeColor === 'b' ? 'bg-purple-500/10 text-white shadow-ambient' : 'bg-white/5 text-gray-400'
-                                }`}>
+
+                            {/* Floating Timer */}
+                            <motion.div
+                                className="font-mono text-2xl font-bold tracking-tight tabular-nums"
+                                style={{
+                                    color: activeColor === 'b' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
+                                    textShadow: activeColor === 'b' ? '0 0 20px rgba(168, 85, 247, 0.5)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
                                 {Math.floor(blackTime / 60)}:{(blackTime % 60).toString().padStart(2, '0')}
-                            </div>
+                            </motion.div>
                         </motion.div>
 
-                        {/* Board Container - Glass Morphism */}
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 }}
-                            className="relative w-full aspect-square glass-strong rounded-2xl overflow-hidden border border-white/10 shadow-ambient">
-                            {/* Arrows Layer */}
-                            {renderArrows()}
 
-                            {/* Board Grid */}
-                            <div className="w-full h-full grid grid-cols-8 grid-rows-8 font-serif">
-                                {renderBoard()}
+                        {/* Board with Advantage Bar - Suspension System */}
+                        <div className="flex items-center gap-4">
+                            {/* Ultra-Thin Advantage Bar */}
+                            <div className="h-full">
+                                <AdvantageBar evaluation={evaluation?.score || 0} />
                             </div>
-                        </motion.div>
 
-                        {/* Player Bottom (User) - Glass Card */}
+                            {/* Board Container - Suspended */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.1 }}
+                                className={`relative w-full aspect-square glass-strong rounded-2xl overflow-hidden border border-white/10 shadow-ambient transition-all duration-500 ${aiOrbActive ? 'brightness-75' : 'brightness-100'
+                                    }`}
+                            >
+                                {/* Arrows Layer */}
+                                {renderArrows()}
+
+                                {/* Board Grid */}
+                                <div className="w-full h-full grid grid-cols-8 grid-rows-8 font-serif">
+                                    {renderBoard()}
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        {/* Player Bottom (User) - Pure Typography */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
-                            className={`glass-strong w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition-all duration-300 ${activeColor === 'w'
-                                ? 'border-purple-500/20 shadow-ambient-active'
-                                : 'border-white/10'
-                                }`}
+                            className="w-full flex items-center justify-between py-2"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className={`size-12 rounded-xl flex items-center justify-center relative transition-all ${activeColor === 'w' ? 'ring-ambient-active shadow-ambient' : 'ring-1 ring-white/10'
-                                    }`}>
-                                    <span className="material-symbols-outlined text-2xl text-gray-400">person</span>
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-lg text-gray-400">person</span>
+                                    </div>
                                     {activeColor === 'w' && (
-                                        <div className="absolute -top-1 -right-1 size-3 bg-green-500 rounded-full animate-pulse" />
+                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                                     )}
                                 </div>
                                 <div>
-                                    <div className={`text-sm font-bold ${activeColor === 'w' ? 'text-purple-300' : 'text-gray-300'}`}>
-                                        Você
-                                    </div>
-                                    <div className="text-xs text-gray-500 font-mono">Rating: 1200</div>
+                                    <h3 className="text-sm font-bold text-gray-200">Você</h3>
+                                    <p className="text-xs opacity-50 font-mono">1200</p>
                                 </div>
                             </div>
-                            <div className={`px-4 py-2 rounded-xl font-mono text-xl font-bold tracking-tight transition-all ${activeColor === 'w' ? 'bg-purple-500/10 text-white shadow-ambient' : 'bg-white/5 text-gray-400'
-                                }`}>
+
+                            {/* Floating Timer */}
+                            <motion.div
+                                className="font-mono text-2xl font-bold tracking-tight tabular-nums"
+                                style={{
+                                    color: activeColor === 'w' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
+                                    textShadow: activeColor === 'w' ? '0 0 20px rgba(255, 255, 255, 0.5)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
                                 {Math.floor(whiteTime / 60)}:{(whiteTime % 60).toString().padStart(2, '0')}
-                            </div>
+                            </motion.div>
                         </motion.div>
                     </div>
                 </div>

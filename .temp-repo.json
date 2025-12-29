@@ -1,0 +1,6 @@
+{
+    "name": "chessmind",
+    "description": "ChessMind - AI-powered chess trainer with Aristóteles mentor and Matte Sophistication UI",
+    "private": false,
+    "auto_init": false
+}
