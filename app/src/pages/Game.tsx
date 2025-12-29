@@ -158,6 +158,7 @@ export default function Game() {
     const [pieces, setPieces] = useState<FloatingPiece[]>([])
     const lastFenRef = useRef<string>('')
     const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null)
+    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
     // Initialize/Sync Pieces
     useEffect(() => {
@@ -591,31 +592,60 @@ export default function Game() {
                                         mass: 0.5
                                     }}
                                     drag={canDrag}
-                                    dragConstraints={boardRef} // Constrain to board but allow free movement
                                     dragElastic={0}
                                     dragMomentum={false}
                                     dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
                                     whileDrag={{
-                                        scale: 1.1,
-                                        zIndex: 1000,
+                                        scale: 1.2,
+                                        zIndex: 9999,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))'
+                                        filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.5))'
                                     }}
-                                    onDragStart={() => {
+                                    onDragStart={(_, info) => {
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
                                         const moves = game.moves({ square: piece.square, verbose: true })
                                         setLegalMoves(moves.map(m => m.to))
+
+                                        const boardRect = boardRef.current?.getBoundingClientRect()
+                                        if (boardRect) {
+                                            const file = piece.square.charCodeAt(0) - 97
+                                            const rank = parseInt(piece.square[1]) - 1
+                                            const orientation = userColor === 'black' ? 'b' : 'w'
+                                            const colIdx = orientation === 'w' ? file : 7 - file
+                                            const rowIdx = orientation === 'w' ? 7 - rank : rank
+
+                                            const squareW = boardRect.width / 8
+                                            const squareH = boardRect.height / 8
+
+                                            // Calculate Visual Center of the Piece
+                                            const centerX = boardRect.left + (colIdx * squareW) + (squareW / 2)
+                                            const centerY = boardRect.top + (rowIdx * squareH) + (squareH / 2)
+
+                                            // Mouse Viewport Position
+                                            const mouseX = info.point.x - window.scrollX
+                                            const mouseY = info.point.y - window.scrollY
+
+                                            // Store Offset
+                                            dragOffsetRef.current = {
+                                                x: centerX - mouseX,
+                                                y: centerY - mouseY
+                                            }
+                                        }
                                     }}
                                     onDrag={(_, info) => {
-                                        // Use raw cursor position for instant target detection
                                         const boardRect = boardRef.current?.getBoundingClientRect()
                                         if (!boardRect) return
 
-                                        const viewportX = info.point.x - window.scrollX
-                                        const viewportY = info.point.y - window.scrollY
-                                        const relX = viewportX - boardRect.left
-                                        const relY = viewportY - boardRect.top
+                                        const mouseX = info.point.x - window.scrollX
+                                        const mouseY = info.point.y - window.scrollY
+
+                                        // Apply offset to get Piece Center
+                                        const targetX = mouseX + dragOffsetRef.current.x
+                                        const targetY = mouseY + dragOffsetRef.current.y
+
+                                        const relX = targetX - boardRect.left
+                                        const relY = targetY - boardRect.top
 
                                         const fileIdx = Math.floor((relX / boardRect.width) * 8)
                                         const rankIdx = Math.floor((relY / boardRect.height) * 8)
@@ -627,17 +657,22 @@ export default function Game() {
                                         if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
                                             const hover = `${String.fromCharCode(97 + file)}${rank + 1}` as Square
                                             setDragOverSquare(hover)
+                                        } else {
+                                            setDragOverSquare(null)
                                         }
                                     }}
                                     onDragEnd={(_, info) => {
-                                        // Chess.com precision: Detect target and handle movement
                                         const boardRect = boardRef.current?.getBoundingClientRect()
 
                                         if (boardRect) {
-                                            const viewportX = info.point.x - window.scrollX
-                                            const viewportY = info.point.y - window.scrollY
-                                            const relX = viewportX - boardRect.left
-                                            const relY = viewportY - boardRect.top
+                                            const mouseX = info.point.x - window.scrollX
+                                            const mouseY = info.point.y - window.scrollY
+
+                                            const targetX = mouseX + dragOffsetRef.current.x
+                                            const targetY = mouseY + dragOffsetRef.current.y
+
+                                            const relX = targetX - boardRect.left
+                                            const relY = targetY - boardRect.top
 
                                             const fileIdx = Math.floor((relX / boardRect.width) * 8)
                                             const rankIdx = Math.floor((relY / boardRect.height) * 8)
@@ -654,7 +689,6 @@ export default function Game() {
                                                     const isLegal = moves.some(m => m.to === targetSquare)
 
                                                     if (isLegal) {
-                                                        // VALID MOVE: Execute immediately, layoutId handles animation
                                                         handleMove({ from: piece.square, to: targetSquare })
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
@@ -663,13 +697,14 @@ export default function Game() {
                                             }
                                         }
 
-
-                                        // Clear drag state
                                         setDraggedPiece(null)
                                         setDragOverSquare(null)
 
-                                        // Clear legal moves only if move succeeded
-                                        // If invalid, keep legal moves so user can click-to-move
+                                        // Clear legal moves if invalid move AND user wasn't clicking
+                                        // Actually, for consistency with click-to-move, we should leave them
+                                        // But if drag fails, usually we clear. 
+                                        // The user requested previously: if drag fails, keep dots for click-to-move.
+                                        // So we do nothing here regarding legalMoves.
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation()
@@ -700,7 +735,7 @@ export default function Game() {
                                         width: '12.5%',
                                         height: '12.5%',
                                         cursor: canDrag ? 'grab' : 'default',
-                                        zIndex: 10,
+                                        zIndex: isDragging ? 100 : 10,
                                         touchAction: 'none',
                                         pointerEvents: 'auto'
                                     }}
