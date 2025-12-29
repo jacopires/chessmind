@@ -1,605 +1,552 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, useLocation } from 'react-router-dom'
-import { Chess, type Square } from 'chess.js'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { type Square, type Move } from 'chess.js'
+import { motion, AnimatePresence } from 'framer-motion'
 import ChessPiece from '../components/ChessPiece'
 import { AIOrb } from '../components/AIOrb'
 import { FloatingFeedback } from '../components/FloatingFeedback'
 import { AdvantageBar } from '../components/AdvantageBar'
+import { ResignButton } from '../components/ResignButton'
 import { useStockfish } from '../lib/stockfish'
 import { analyzePosition, type MoveQuality } from '../lib/openai'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { useGame } from '../lib/GameContext'
 
-// Game Insight Interface
-interface GameInsight {
-    moveNumber: number
-    move: string
-    quality: MoveQuality
-    feedback: string
-    fen: string
-    evaluation: number
-}
-
-type Arrow = {
-    from: Square
-    to: Square
-    color: string
+interface FloatingPiece {
+    square: Square
+    type: 'p' | 'n' | 'b' | 'r' | 'q' | 'k'
+    color: 'w' | 'b'
+    key: string
 }
 
 export default function Game() {
-    const { id: gameId } = useParams<{ id: string }>()
+    const { id: routeGameId } = useParams<{ id: string }>()
     const { user } = useAuth()
-    useEffect(() => {
-        if (gameId) console.log('Game ID:', gameId)
-    }, [gameId])
+    const navigate = useNavigate()
     const location = useLocation()
-    const { timeControl, color: userColor, aiMentor: initialAiMentor } = location.state || { timeControl: '10|0', color: 'white', aiMentor: true }
+    const boardRef = useRef<HTMLDivElement>(null)
 
-    // Time Control Parsing
-    const initialTime = timeControl && timeControl.includes('|') ? parseInt(timeControl.split('|')[0]) * 60 : 600
-    const initialIncrement = timeControl && timeControl.includes('|') ? parseInt(timeControl.split('|')[1]) : 0
+    // Game Context - SINGLE SOURCE OF TRUTH
+    const {
+        game,
+        gameId,
+        userColor,
+        aiLevel,
+        whiteTime,
+        blackTime,
+        gameInsights,
+        moveQualityCounts,
+        aiMentor,
+        isActive,
+        startNewGame,
+        makeMove: contextMakeMove,
+        endGame,
+        updateTime,
+        addInsight
+    } = useGame()
 
-    const [game, setGame] = useState(new Chess())
-    const [boardOrientation, setBoardOrientation] = useState<'w' | 'b'>('w')
+    // Location state setup (only for NEW games)
+    const locationState = location.state as any
+    const {
+        timeControl: initTimeControl = '10|0',
+        color: initColor = 'white',
+        aiMentor: initAiMentor = true,
+        aiLevel: initAiLevel = 1
+    } = locationState || {}
 
-    // Game State
+    // UI State (not game state)
     const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
-    const [lastMoveSan, setLastMoveSan] = useState<string>('')
-    const [activeColor, setActiveColor] = useState<'w' | 'b'>('w')
-
-    // Time State
-    const [whiteTime, setWhiteTime] = useState(initialTime)
-    const [blackTime, setBlackTime] = useState(initialTime)
-
-    // AI/Analysis State
-    const [aiMentor] = useState(initialAiMentor)
-    const [hasAnalyzed, setHasAnalyzed] = useState(false)
-    const [preMoveScore, setPreMoveScore] = useState<number | null>(null)
-    const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
-
-    // Antigravity UI State
+    const [draggedPiece, setDraggedPiece] = useState<FloatingPiece | null>(null)
     const [showFloatingFeedback, setShowFloatingFeedback] = useState(false)
     const [currentFeedback, setCurrentFeedback] = useState('')
     const [aiOrbActive, setAiOrbActive] = useState(false)
-
-    // Insights Tracking State
-    const [gameInsights, setGameInsights] = useState<GameInsight[]>([])
-    const [moveQualityCounts, setMoveQualityCounts] = useState({
-        best: 0,
-        good: 0,
-        mistake: 0,
-        blunder: 0
-    })
+    const [suggestedMove, setSuggestedMove] = useState<{ from: Square; to: Square } | null>(null)
+    const [preMoveEval, setPreMoveEval] = useState<number | null>(null)
+    const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
 
-    // Arrow & Drag State
-    const [arrows, setArrows] = useState<Arrow[]>([])
-    const [rightClickStart, setRightClickStart] = useState<Square | null>(null)
-    const [draggedSquare, setDraggedSquare] = useState<Square | null>(null)
-
-    // Set board orientation based on resolved color
+    // Initialize NEW game or resume existing
     useEffect(() => {
-        if (userColor === 'black') {
-            setBoardOrientation('b')
-        } else {
-            setBoardOrientation('w')
+        if (isActive && gameId) {
+            console.log('Resuming active game:', gameId)
+            // Game already loaded from context
+            return
         }
-    }, [userColor]);
 
-    // Update evaluation when position changes
-    useEffect(() => {
-        if (!isReady) return
-        evaluatePosition(game.fen())
-    }, [game, isReady, evaluatePosition])
+        // Start new game if coming from NewGame page
+        if (locationState && !isActive) {
+            const [minutes] = initTimeControl.split('|').map(Number)
+            const initialTime = minutes * 60
 
-    // Timer Logic
+            console.log('Starting new game:', {
+                color: initColor,
+                timeControl: initTimeControl,
+                aiLevel: initAiLevel
+            })
+
+            startNewGame({
+                gameId: routeGameId || `game-${Date.now()}`,
+                color: initColor as 'white' | 'black',
+                initialTime,
+                timeControl: initTimeControl,
+                aiMentor: initAiMentor,
+                aiLevel: initAiLevel
+            })
+        }
+    }, [])
+
+    // Evaluate position when it changes
     useEffect(() => {
+        if (!isReady || !isActive) return
+        evaluatePosition(game.fen(), aiLevel)
+    }, [game.fen(), isReady, isActive, aiLevel])
+
+    // Timer tick
+    useEffect(() => {
+        if (!isActive) return
+
         const timer = setInterval(() => {
-            if (activeColor === 'w') setWhiteTime(prev => Math.max(0, prev - 1))
-            else setBlackTime(prev => Math.max(0, prev - 1))
+            const currentTurn = game.turn()
+            if (currentTurn === 'w') {
+                updateTime('white', Math.max(0, whiteTime - 1))
+            } else {
+                updateTime('black', Math.max(0, blackTime - 1))
+            }
         }, 1000)
-        if (game.isGameOver()) clearInterval(timer)
+
+        if (game.isGameOver() || whiteTime === 0 || blackTime === 0) {
+            clearInterval(timer)
+        }
+
         return () => clearInterval(timer)
-    }, [activeColor, game])
+    }, [isActive, whiteTime, blackTime, game.fen()])
 
-    // Update active color on move
+    // AI Move Logic
     useEffect(() => {
-        setActiveColor(game.turn())
-    }, [game])
+        if (!isActive || game.isGameOver()) return
 
+        const currentTurn = game.turn()
+        const isAITurn = (userColor === 'white' && currentTurn === 'b') ||
+            (userColor === 'black' && currentTurn === 'w')
 
-    // Make Move
-    const makeMove = useCallback((move: { from: string, to: string, promotion?: string }) => {
-        try {
-            const gameCopy = new Chess(game.fen())
-            // Validate Logic for user (manual) or ai
-            // If manual, it might be partial string? No, chess.js handles it.
+        if (isAITurn && bestMove) {
+            const delay = setTimeout(() => {
+                setAiOrbActive(true)
 
-            const result = gameCopy.move(move)
+                setTimeout(() => {
+                    const moveObj = {
+                        from: bestMove.substring(0, 2) as Square,
+                        to: bestMove.substring(2, 4) as Square,
+                        promotion: bestMove.length > 4 ? 'q' : undefined
+                    }
 
-            if (result) {
-                // Determine quality vars before update (snapshotting current eval for opponent - which was player)
-                // Wait, quality is calculated for the moved piece.
-                // If I am White, I move. My score was +50.
-                if (evaluation) {
-                    setPreMoveScore(evaluation.score)
-                    setPreMoveBestMove(evaluation.bestMove)
-                }
+                    handleMove(moveObj)
+                    setAiOrbActive(false)
+                }, 300) // Reduced from 1000ms
+            }, 300)
 
-                setGame(gameCopy)
-                setLastMoveSan(result.san)
-                setSelectedSquare(null)
-                setArrows([]) // Clear arrows on move
-                setHasAnalyzed(false) // Reset analysis trigger
-
-                // Add increment
-                const movedColor = result.color
-                if (movedColor === 'w') setWhiteTime(prev => prev + initialIncrement)
-                else setBlackTime(prev => prev + initialIncrement)
-
-                // Check game over
-                if (gameCopy.isGameOver()) {
-                    // Game over logic (can be added back if state is restored)
-                }
-                return true
-            }
-        } catch (e) {
-            return false
+            return () => clearTimeout(delay)
         }
-        return false
-    }, [game, evaluation, initialIncrement])
+    }, [bestMove, game.fen(), userColor, isActive])
 
+    // Extract floating pieces from FEN
+    const pieces = useMemo((): FloatingPiece[] => {
+        const board = game.board()
+        const result: FloatingPiece[] = []
 
-    // Auto-Play Logic (Stockfish Opponent)
-    useEffect(() => {
-        if (!isReady || game.isGameOver()) return
+        board.forEach((row, rankIdx) => {
+            row.forEach((piece, fileIdx) => {
+                if (piece) {
+                    const file = String.fromCharCode(97 + fileIdx)
+                    const rank = `${8 - rankIdx}`
+                    const square = `${file}${rank}` as Square
 
-        const isPlayerTurn = game.turn() === (userColor === 'black' ? 'b' : 'w')
-
-        // If it's NOT player's turn, it's Computer's turn.
-        if (!isPlayerTurn && bestMove) {
-            console.log("SF Best Move Trigger (Delayed):", bestMove)
-            const from = bestMove.substring(0, 2)
-            const to = bestMove.substring(2, 4)
-            const promotion = bestMove.length === 5 ? bestMove[4] : 'q'
-
-            // Humanize Delay (e.g., 2.5s - 4.5s)
-            // This gives time for Mentor to "react" first if analysis is fast enough.
-            const humanDelay = Math.floor(Math.random() * 2000) + 2500
-
-            const timer = setTimeout(() => {
-                makeMove({ from, to, promotion })
-            }, humanDelay)
-
-            return () => clearTimeout(timer)
-        }
-    }, [bestMove, game, userColor, isReady, makeMove])
-
-    // Auto-Analysis (Mentor)
-    useEffect(() => {
-        const isPlayerTurn = game.turn() === (userColor === 'black' ? 'b' : 'w')
-
-        // Analyze AFTER the player moves (now it's opponent's turn)
-        if (!isPlayerTurn && !hasAnalyzed && aiMentor && evaluation && evaluation.depth >= 10) {
-            setHasAnalyzed(true)
-
-            // Calculate Quality
-            const currentScorePerspective = -1 * evaluation.score
-            const delta = currentScorePerspective - (preMoveScore ?? 0)
-
-            let quality: 'Best' | 'Good' | 'Mistake' | 'Blunder' = 'Good'
-            if (lastMoveSan.includes('#')) quality = 'Best'
-            else if (lastMoveSan === preMoveBestMove) quality = 'Best'
-            else if (delta > -30) quality = 'Good'
-            else if (delta > -100) quality = 'Mistake'
-            else quality = 'Blunder'
-
-            setAiOrbActive(true)
-            analyzePosition({
-                fen: game.fen(),
-                pgn: game.pgn(),
-                move: lastMoveSan,
-                moveQuality: quality,
-                bestMove: preMoveBestMove
-            }).then(analysis => {
-                // Save insight
-                const insight: GameInsight = {
-                    moveNumber: game.history().length,
-                    move: lastMoveSan,
-                    quality: analysis.quality,
-                    feedback: analysis.text,
-                    fen: game.fen(),
-                    evaluation: evaluation?.score || 0
+                    result.push({
+                        square,
+                        type: piece.type,
+                        color: piece.color,
+                        key: `${piece.color}${piece.type}${square}`
+                    })
                 }
-
-                setGameInsights(prev => [...prev, insight])
-
-                // Update quality counts
-                const qualityKey = analysis.quality.toLowerCase() as keyof typeof moveQualityCounts
-                setMoveQualityCounts(prev => ({
-                    ...prev,
-                    [qualityKey]: prev[qualityKey] + 1
-                }))
-
-                // Display feedback
-                setCurrentFeedback(analysis.text)
-                setShowFloatingFeedback(true)
-                setAiOrbActive(false)
-            }).catch(err => {
-                console.error(err)
-                setAiOrbActive(false)
             })
-        }
-    }, [evaluation, game, userColor, aiMentor, hasAnalyzed, preMoveScore, preMoveBestMove, lastMoveSan])
+        })
 
-    // Save Game to Supabase
-    const saveGameSnapshot = async () => {
-        if (!gameId || !user) {
-            console.log('Cannot save: missing gameId or user')
-            return
-        }
+        return result
+    }, [game.fen()])
 
-        const finalPGN = game.pgn()
-        const finalResult = game.isGameOver()
-            ? (game.isCheckmate()
-                ? (game.turn() === 'w' ? '0-1' : '1-0')
-                : '1/2-1/2')
-            : '*'
+    // Helper: Square position
+    const getSquarePosition = (square: Square, orientation: 'w' | 'b' = 'w') => {
+        const file = square.charCodeAt(0) - 'a'.charCodeAt(0)
+        const rank = '8'.charCodeAt(0) - square.charCodeAt(1)
 
-        const totalMoves = gameInsights.length
-        const accuracy = totalMoves > 0
-            ? ((moveQualityCounts.best + moveQualityCounts.good) / totalMoves) * 100
-            : 0
+        const x = orientation === 'w' ? file : 7 - file
+        const y = orientation === 'w' ? rank : 7 - rank
 
-        const analysisSummary = {
-            ...moveQualityCounts,
-            totalMoves,
-            accuracy: Math.round(accuracy * 10) / 10
-        }
-
-        console.log('Saving game snapshot:', { gameId, finalResult, analysisSummary, insightsCount: gameInsights.length })
-
-        const { error } = await supabase
-            .from('games')
-            .update({
-                pgn: finalPGN,
-                result: finalResult,
-                final_position: game.fen(),
-                analysis_summary: analysisSummary,
-                insights: gameInsights,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', gameId)
-
-        if (error) {
-            console.error('Error saving game:', error)
-        } else {
-            console.log('Game saved successfully!')
+        return {
+            left: `${x * 12.5}%`,
+            top: `${y * 12.5}%`
         }
     }
 
-    // Auto-save on game over
-    useEffect(() => {
-        if (game.isGameOver() && gameInsights.length > 0) {
-            console.log('Game over detected, saving...')
-            saveGameSnapshot()
-        }
-    }, [game.isGameOver()])
+    // Helper: Get square from pointer
+    const getSquareFromPointer = (point: { x: number; y: number }): Square | null => {
+        const boardRect = boardRef.current?.getBoundingClientRect()
+        if (!boardRect) return null
 
-    // Save on unmount if there are insights
-    useEffect(() => {
-        return () => {
-            if (gameInsights.length > 0) {
-                console.log('Component unmounting, saving insights...')
-                saveGameSnapshot()
-            }
-        }
-    }, [gameInsights])
+        const relX = point.x - boardRect.left
+        const relY = point.y - boardRect.top
 
+        const fileIdx = Math.floor((relX / boardRect.width) * 8)
+        const rankIdx = Math.floor((relY / boardRect.height) * 8)
 
-    // Handlers
-    const handleSquareClick = (square: Square) => {
-        const isPlayerTurn = game.turn() === (userColor === 'black' ? 'b' : 'w')
-        if (!isPlayerTurn) return
+        const orientation = userColor === 'black' ? 'b' : 'w'
+        const file = orientation === 'w' ? fileIdx : 7 - fileIdx
+        const rank = orientation === 'w' ? 7 - rankIdx : rankIdx
 
-        if (selectedSquare === square) {
-            setSelectedSquare(null)
-            return
+        if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+            return `${String.fromCharCode(97 + file)}${rank + 1}` as Square
         }
 
-        if (selectedSquare) {
-            const success = makeMove({ from: selectedSquare, to: square, promotion: 'q' })
-            if (!success) {
-                const piece = game.get(square)
-                if (piece && piece.color === game.turn()) {
-                    setSelectedSquare(square)
-                } else {
-                    setSelectedSquare(null)
+        return null
+    }
+
+    // Handle move (with analysis)
+    const handleMove = useCallback(async (move: { from: Square; to: Square; promotion?: string }) => {
+        // Save pre-move evaluation
+        if (evaluation) {
+            setPreMoveEval(evaluation.score)
+            setPreMoveBestMove(evaluation.bestMove)
+        }
+
+        const success = contextMakeMove(move as Move)
+        if (!success) return false
+
+        setSelectedSquare(null)
+        setSuggestedMove(null)
+
+        // AI Analysis (only for player moves)
+        if (aiMentor && game.turn() !== (userColor === 'white' ? 'w' : 'b')) {
+            setTimeout(async () => {
+                setAiOrbActive(true)
+
+                try {
+                    const currentEval = evaluation?.score || 0
+                    const diff = preMoveEval !== null ? currentEval - preMoveEval : 0
+
+                    let quality: MoveQuality = 'Good'
+                    if (Math.abs(diff) < 30) quality = 'Best'
+                    else if (diff < -50) quality = 'Mistake'
+                    else if (diff < -150) quality = 'Blunder'
+
+                    const moveCount = game.history().length
+                    const recentMoves = game.history().slice(-5)
+
+                    const analysis = await analyzePosition({
+                        fen: game.fen(),
+                        move: game.history()[game.history().length - 1],
+                        moveQuality: quality,
+                        bestMove: preMoveBestMove,
+                        evaluation: currentEval,
+                        timeRemaining: userColor === 'white' ? whiteTime : blackTime,
+                        recentMoves
+                    })
+
+                    setCurrentFeedback(analysis.text)
+                    setShowFloatingFeedback(true)
+
+                    // Add to context
+                    addInsight({
+                        moveNumber: moveCount,
+                        move: game.history()[game.history().length - 1],
+                        quality: analysis.quality,
+                        feedback: analysis.text,
+                        fen: game.fen(),
+                        evaluation: currentEval
+                    })
+
+                    setTimeout(() => setShowFloatingFeedback(false), 5000)
+                } catch (error) {
+                    console.error('Analysis error:', error)
+                } finally {
+                    setAiOrbActive(false)
                 }
+            }, 500)
+        }
+
+        // Check game over
+        if (game.isGameOver()) {
+            await saveGameSnapshot()
+        }
+
+        return true
+    }, [game, evaluation, preMoveEval, aiMentor, userColor, whiteTime, blackTime])
+
+    // Save game snapshot
+    const saveGameSnapshot = async (result?: string) => {
+        if (!user) return
+
+        let finalResult = result
+        if (!finalResult) {
+            if (game.isCheckmate()) {
+                finalResult = game.turn() === 'w' ? '0-1' : '1-0'
+            } else if (game.isDraw()) {
+                finalResult = '1/2-1/2'
+            } else if (whiteTime === 0) {
+                finalResult = '0-1'
+            } else if (blackTime === 0) {
+                finalResult = '1-0'
             }
-        } else {
-            const piece = game.get(square)
-            if (piece && piece.color === game.turn()) {
-                setSelectedSquare(square)
-            }
-        }
-    }
-
-    // Drag & Drop Handlers
-    const handleDragStart = (e: React.DragEvent, square: Square) => {
-        const isPlayerTurn = game.turn() === (userColor === 'black' ? 'b' : 'w')
-        if (!isPlayerTurn) {
-            e.preventDefault()
-            return
         }
 
-        const piece = game.get(square)
-        if (!piece || piece.color !== game.turn()) {
-            e.preventDefault()
-            return
-        }
+        const analysisSummary = `Melhor: ${moveQualityCounts.best} | Bom: ${moveQualityCounts.good} | Erro: ${moveQualityCounts.mistake} | Blunder: ${moveQualityCounts.blunder}`
 
-        setDraggedSquare(square)
-        e.dataTransfer.effectAllowed = 'move'
-        // Create ghost image properly if needed, but default is usually ok for now
+        await supabase.from('games').insert({
+            user_id: user.id,
+            pgn: game.pgn(),
+            result: finalResult,
+            analysis_summary: analysisSummary,
+            insights: gameInsights,
+            final_fen: game.fen()
+        })
+
+        endGame()
     }
 
-    const handleDrop = (e: React.DragEvent, targetSquare: Square) => {
-        e.preventDefault()
-        if (draggedSquare) {
-            makeMove({ from: draggedSquare, to: targetSquare, promotion: 'q' })
-            setDraggedSquare(null)
-        }
+    // Handle resign
+    const handleResign = async () => {
+        const result = userColor === 'white' ? '0-1' : '1-0'
+        await saveGameSnapshot(result)
+        navigate('/dashboard')
     }
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-    }
+    // Render board
+    const renderBoard = () => {
+        const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+        const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
 
-    // Right Click Arrows
-    const handleMouseDown = (e: React.MouseEvent, square: Square) => {
-        if (e.button === 2) { // Right click
-            setRightClickStart(square)
-        }
-    }
-
-    const handleMouseUp = (e: React.MouseEvent, square: Square) => {
-        if (e.button === 2 && rightClickStart) {
-            if (rightClickStart !== square) {
-                // Draw arrow
-                setArrows(prev => {
-                    const existing = prev.find(a => a.from === rightClickStart && a.to === square)
-                    if (existing) return prev.filter(a => a !== existing) // Toggle off
-                    return [...prev, { from: rightClickStart, to: square, color: '#fda429' }] // Add new
-                })
-            }
-            setRightClickStart(null)
-        } else if (e.button === 0) {
-            // Left click clears arrows
-            setArrows([])
-        }
-    }
-
-    // SVG Arrow Rendering Helper
-    const getSquareCenter = (square: Square) => {
-        const file = square.charCodeAt(0) - 97
-        const rank = 8 - parseInt(square[1])
-        // Adjust for Board Orientation
-        const col = boardOrientation === 'w' ? file : 7 - file
-        const row = boardOrientation === 'w' ? rank : 7 - rank
-
-        return { x: col * 12.5 + 6.25, y: row * 12.5 + 6.25 } // % coordinates
-    }
-
-    const renderArrows = () => {
         return (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
-                <defs>
-                    <marker id="arrowhead" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
-                        <polygon points="0 0, 4 2, 0 4" fill="#fda429" opacity="0.8" />
-                    </marker>
-                </defs>
-                {arrows.map((arrow, i) => {
-                    const start = getSquareCenter(arrow.from)
-                    const end = getSquareCenter(arrow.to)
-                    return (
-                        <line
-                            key={i}
-                            x1={`${start.x}%`} y1={`${start.y}%`}
-                            x2={`${end.x}%`} y2={`${end.y}%`}
-                            stroke="#fda429" strokeWidth="1.5" strokeOpacity="0.8"
-                            markerEnd="url(#arrowhead)"
-                        />
-                    )
-                })}
-            </svg>
+            <div ref={boardRef} className="relative aspect-square w-full max-w-2xl mx-auto">
+                {/* Board Grid (empty cells) */}
+                <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
+                    {ranks.map((rank, rankIdx) =>
+                        files.map((file, fileIdx) => {
+                            const square = `${file}${rank}` as Square
+                            const isLight = (rankIdx + fileIdx) % 2 === 0
+                            const isSelected = selectedSquare === square
+
+                            return (
+                                <div
+                                    key={square}
+                                    onClick={() => {
+                                        if (!isActive) return
+                                        const piece = game.get(square)
+
+                                        if (selectedSquare) {
+                                            // Validate move is legal
+                                            const moves = game.moves({ square: selectedSquare, verbose: true })
+                                            const isLegal = moves.some(m => m.to === square)
+
+                                            if (isLegal) {
+                                                handleMove({ from: selectedSquare, to: square })
+                                            } else {
+                                                setSelectedSquare(null) // Clear selection on illegal move
+                                            }
+                                        } else if (piece && piece.color === game.turn()) {
+                                            setSelectedSquare(square)
+                                        }
+                                    }}
+                                    className={`
+                                        ${isLight ? 'bg-slate-300' : 'bg-slate-600'}
+                                        ${isSelected ? 'ring-4 ring-purple-500 ring-inset' : ''}
+                                        cursor-pointer transition-all
+                                    `}
+                                />
+                            )
+                        })
+                    )}
+                </div>
+
+                {/* Floating Pieces Layer */}
+                <div className="absolute inset-0 pointer-events-none">
+                    <AnimatePresence>
+                        {pieces.map((piece) => {
+                            const orientation = userColor === 'black' ? 'b' : 'w'
+                            const position = getSquarePosition(piece.square, orientation)
+                            const isDragging = draggedPiece?.key === piece.key
+                            const canDrag = isActive && game.turn() === piece.color &&
+                                ((userColor === 'white' && piece.color === 'w') ||
+                                    (userColor === 'black' && piece.color === 'b'))
+
+                            return (
+                                <motion.div
+                                    key={piece.key}
+                                    layout={!isDragging}
+                                    initial={false}
+                                    transition={{
+                                        type: 'spring',
+                                        stiffness: 300,
+                                        damping: 30,
+                                        mass: 0.8
+                                    }}
+                                    drag={canDrag}
+                                    dragMomentum={false}
+                                    dragElastic={0}
+                                    whileDrag={{
+                                        scale: 1.2,
+                                        zIndex: 100,
+                                        cursor: 'grabbing',
+                                        filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))'
+                                    }}
+                                    onDragStart={() => {
+                                        setDraggedPiece(piece)
+                                        setSelectedSquare(piece.square)
+                                    }}
+                                    onDragEnd={(_, info) => {
+                                        const targetSquare = getSquareFromPointer(info.point)
+                                        if (targetSquare && targetSquare !== piece.square) {
+                                            // Validate move is legal
+                                            const moves = game.moves({ square: piece.square, verbose: true })
+                                            const isLegal = moves.some(m => m.to === targetSquare)
+                                            if (isLegal) {
+                                                handleMove({ from: piece.square, to: targetSquare })
+                                            }
+                                        }
+                                        setDraggedPiece(null)
+                                    }}
+                                    style={{
+                                        position: 'absolute',
+                                        left: position.left,
+                                        top: position.top,
+                                        width: '12.5%',
+                                        height: '12.5%',
+                                        cursor: canDrag ? 'grab' : 'default',
+                                        pointerEvents: 'auto'
+                                    }}
+                                >
+                                    <ChessPiece type={piece.type} color={piece.color} />
+                                </motion.div>
+                            )
+                        })}
+                    </AnimatePresence>
+                </div>
+
+                {/* AI Highlights */}
+                {suggestedMove && (
+                    <>
+                        {[suggestedMove.from, suggestedMove.to].map((square, idx) => {
+                            const orientation = userColor === 'black' ? 'b' : 'w'
+                            const position = getSquarePosition(square, orientation)
+
+                            return (
+                                <motion.div
+                                    key={`highlight-${square}`}
+                                    className="absolute pointer-events-none rounded-lg"
+                                    style={{
+                                        left: position.left,
+                                        top: position.top,
+                                        width: '12.5%',
+                                        height: '12.5%'
+                                    }}
+                                    animate={{
+                                        boxShadow: [
+                                            '0 0 0 0 rgba(168, 85, 247, 0)',
+                                            '0 0 0 8px rgba(168, 85, 247, 0.6)',
+                                            '0 0 0 0 rgba(168, 85, 247, 0)'
+                                        ]
+                                    }}
+                                    transition={{
+                                        repeat: Infinity,
+                                        duration: 1.5,
+                                        delay: idx * 0.75
+                                    }}
+                                />
+                            )
+                        })}
+                    </>
+                )}
+            </div>
         )
     }
 
-    const renderBoard = () => {
-        const board = []
-        const boardState = game.board()
-
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                // Adjust row/col based on board orientation
-                const displayRow = boardOrientation === 'w' ? row : 7 - row
-                const displayCol = boardOrientation === 'w' ? col : 7 - col
-
-                const isWhiteSquare = (displayRow + displayCol) % 2 === 0
-                const piece = boardState[displayRow][displayCol]
-                const squareName = String.fromCharCode(97 + displayCol) + (8 - displayRow) as Square
-
-                const isSelected = selectedSquare === squareName
-
-                // Highlight last move
-                const isLastMoveFrom = lastMoveSan && game.history({ verbose: true }).length > 0 && game.history({ verbose: true }).slice(-1)[0].from === squareName
-                const isLastMoveTo = lastMoveSan && game.history({ verbose: true }).length > 0 && game.history({ verbose: true }).slice(-1)[0].to === squareName
-
-                let rankLabel = null
-                let fileLabel = null
-
-                if (col === 0) rankLabel = <span className={`absolute top-0.5 left-0.5 text-[10px] font-bold font-sans ${isWhiteSquare ? 'text-[#779556]' : 'text-[#ebecd0]'}`}>{8 - displayRow}</span>
-                if (row === 7) fileLabel = <span className={`absolute bottom-0.5 right-1 text-[10px] font-bold font-sans ${isWhiteSquare ? 'text-[#779556]' : 'text-[#ebecd0]'}`}>{String.fromCharCode(97 + displayCol)}</span>
-
-                board.push(
-                    <div
-                        key={`${displayRow}-${displayCol}`}
-                        onMouseDown={(e) => handleMouseDown(e, squareName)}
-                        onMouseUp={(e) => handleMouseUp(e, squareName)}
-                        onClick={() => handleSquareClick(squareName)}
-                        onContextMenu={(e) => e.preventDefault()}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, squareName)}
-                        className={`
-                            ${isWhiteSquare ? 'bg-white/10' : 'bg-white/3'} 
-                            ${isSelected ? 'ring-ambient-active' : ''} 
-                            ${(isLastMoveFrom || isLastMoveTo) ? 'bg-purple-500/20 shadow-ambient' : ''}
-                            flex items-center justify-center relative text-5xl sm:text-6xl lg:text-7xl select-none
-                            transition-all duration-200
-                        `}
-                    >
-                        {rankLabel}
-                        {fileLabel}
-
-                        {/* Render Piece */}
-                        {piece && (
-                            <div
-                                className="w-[80%] h-[80%] flex items-center justify-center cursor-grab active:cursor-grabbing relative"
-                                draggable={true}
-                                onDragStart={(e) => handleDragStart(e, squareName)}
-                            >
-                                {isSelected && (
-                                    <div className="absolute inset-0 rounded-full bg-purple-500/8 blur-lg" />
-                                )}
-                                <ChessPiece type={piece.type} color={piece.color} />
-                            </div>
-                        )}
-                    </div>
-                )
-            }
-        }
-        return board
+    // Time formatting
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60)
+        const secs = seconds % 60
+        return `${mins}:${secs.toString().padStart(2, '0')}`
     }
 
     return (
         <div className="flex-1 flex justify-center items-center p-6">
-            {/* Floating Feedback */}
             <FloatingFeedback
                 message={currentFeedback}
                 isVisible={showFloatingFeedback}
                 onDismiss={() => setShowFloatingFeedback(false)}
             />
 
-            {/* Main Content */}
-            <div className="flex items-center gap-6 max-w-[1400px] w-full">
-                {/* AIOrb - Left Position */}
-                <div className="flex-shrink-0">
-                    <AIOrb emotion="analytical" isActive={aiOrbActive} />
+            <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-6 items-center lg:items-start">
+                {/* Left: AI Orb + Advantage */}
+                <div className="flex flex-col items-center gap-4">
+                    <AIOrb isActive={aiOrbActive} />
+                    <AdvantageBar evaluation={evaluation?.score || 0} />
                 </div>
 
-                {/* Constrained Container for Perfect Alignment */}
-                <div className="flex flex-col gap-3 w-full max-w-md lg:max-w-none lg:w-auto lg:h-[85vh] lg:aspect-[9/11]">
-
-                    {/* Player Top (Opponent) - Pure Typography */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="w-full flex items-center justify-between py-2"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-lg text-gray-400">smart_toy</span>
-                                </div>
-                                {activeColor === 'b' && (
-                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-                                )}
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-200">Aristóteles (Nível 1)</h3>
-                                <p className="text-xs opacity-50 font-mono">3200</p>
-                            </div>
-                        </div>
-
-                        {/* Floating Timer */}
-                        <motion.div
-                            className="font-mono text-2xl font-bold tracking-tight tabular-nums"
-                            style={{
-                                color: activeColor === 'b' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
-                                textShadow: activeColor === 'b' ? '0 0 20px rgba(168, 85, 247, 0.5)' : 'none',
-                                transition: 'all 0.3s ease'
-                            }}
-                        >
-                            {Math.floor(blackTime / 60)}:{(blackTime % 60).toString().padStart(2, '0')}
-                        </motion.div>
-                    </motion.div>
-
-
-                    {/* Board with Advantage Bar - Suspension System */}
-                    <div className="flex items-center gap-4">
-                        {/* Ultra-Thin Advantage Bar */}
-                        <div className="h-full">
-                            <AdvantageBar evaluation={evaluation?.score || 0} />
-                        </div>
-
-                        {/* Board Container - Suspended */}
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 }}
-                            className={`relative w-full aspect-square glass-strong rounded-2xl overflow-hidden border border-white/10 shadow-ambient transition-all duration-500 ${aiOrbActive ? 'brightness-75' : 'brightness-100'
-                                }`}
-                        >
-                            {/* Arrows Layer */}
-                            {renderArrows()}
-
-                            {/* Board Grid */}
-                            <div className="w-full h-full grid grid-cols-8 grid-rows-8 font-serif">
-                                {renderBoard()}
-                            </div>
-                        </motion.div>
+                {/* Center: Board + Controls */}
+                <div className="flex-1 flex flex-col gap-4">
+                    {/* Opponent Timer */}
+                    <div className="glass-strong rounded-xl p-4 flex justify-between items-center">
+                        <span className="text-lg font-bold">
+                            {userColor === 'white' ? 'Aristóteles' : 'Você'}
+                        </span>
+                        <span className="text-2xl font-mono">
+                            {formatTime(userColor === 'white' ? blackTime : whiteTime)}
+                        </span>
                     </div>
 
-                    {/* Player Bottom (User) - Pure Typography */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="w-full flex items-center justify-between py-2"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-lg text-gray-400">person</span>
-                                </div>
-                                {activeColor === 'w' && (
-                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-                                )}
+                    {/* Board */}
+                    {renderBoard()}
+
+                    {/* Player Timer */}
+                    <div className="glass-strong rounded-xl p-4 flex justify-between items-center">
+                        <span className="text-lg font-bold">
+                            {userColor === 'white' ? 'Você' : 'Aristóteles'}
+                        </span>
+                        <span className="text-2xl font-mono">
+                            {formatTime(userColor === 'white' ? whiteTime : blackTime)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Right: Game Info */}
+                <div className="w-64 space-y-4">
+                    <div className="glass-strong rounded-xl p-4">
+                        <h3 className="text-sm font-bold opacity-60 mb-2">ESTATÍSTICAS</h3>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span>Melhor</span>
+                                <span className="text-green-400">{moveQualityCounts.best}</span>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-200">Você</h3>
-                                <p className="text-xs opacity-50 font-mono">1200</p>
+                            <div className="flex justify-between">
+                                <span>Bom</span>
+                                <span className="text-blue-400">{moveQualityCounts.good}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Erro</span>
+                                <span className="text-yellow-400">{moveQualityCounts.mistake}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Blunder</span>
+                                <span className="text-red-400">{moveQualityCounts.blunder}</span>
                             </div>
                         </div>
-
-                        {/* Floating Timer */}
-                        <motion.div
-                            className="font-mono text-2xl font-bold tracking-tight tabular-nums"
-                            style={{
-                                color: activeColor === 'w' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
-                                textShadow: activeColor === 'w' ? '0 0 20px rgba(255, 255, 255, 0.5)' : 'none',
-                                transition: 'all 0.3s ease'
-                            }}
-                        >
-                            {Math.floor(whiteTime / 60)}:{(whiteTime % 60).toString().padStart(2, '0')}
-                        </motion.div>
-                    </motion.div>
+                    </div>
                 </div>
             </div>
+
+            {/* Resign Button */}
+            {isActive && <ResignButton onResign={handleResign} />}
         </div>
     )
 }
