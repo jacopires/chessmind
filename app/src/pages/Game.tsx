@@ -304,13 +304,20 @@ export default function Game() {
         }
     }
 
-    // Helper: Get square from pointer
+    // Helper: Get square from pointer (Robust version handling scrolls)
     const getSquareFromPointer = (point: { x: number; y: number }): Square | null => {
         const boardRect = boardRef.current?.getBoundingClientRect()
         if (!boardRect) return null
 
-        const relX = point.x - boardRect.left
-        const relY = point.y - boardRect.top
+        // If point is page-relative (Framer Motion default), subtract scroll
+        // BUT Framer Motion 'info.point' is page relative. 'boardRect' is viewport relative.
+        // We need point relative to viewport OR boardRect relative to page.
+        // Easiest: Convert point to viewport by subtracting window.scroll
+        const viewportX = point.x - window.scrollX
+        const viewportY = point.y - window.scrollY
+
+        const relX = viewportX - boardRect.left
+        const relY = viewportY - boardRect.top
 
         const fileIdx = Math.floor((relX / boardRect.width) * 8)
         const rankIdx = Math.floor((relY / boardRect.height) * 8)
@@ -583,6 +590,7 @@ export default function Game() {
                                     }}
                                     onDragEnd={(_, info) => {
                                         const targetSquare = getSquareFromPointer(info.point)
+                                        let moved = false
 
                                         // Attempt move if dropped on different valid square
                                         if (targetSquare && targetSquare !== piece.square) {
@@ -591,12 +599,38 @@ export default function Game() {
 
                                             if (isLegal) {
                                                 handleMove({ from: piece.square, to: targetSquare })
+                                                moved = true
                                             }
                                         }
 
                                         // Cleanup
                                         setDraggedPiece(null)
-                                        setLegalMoves([])
+
+                                        // Only clear legal moves if move succeeded
+                                        // If move failed (snap back), we might want to KEEP the selection if it was a "click-like" action
+                                        // But typically, dropping back implies cancel.
+                                        // However, since we now have explicit onClick, let onClick handle selection.
+                                        // We clear here to clean up DRAG state.
+                                        // IF the user just clicked, onDragEnd fires too? 
+                                        // Framer Motion: Click fires Tap. Drag fires DragEnd.
+                                        // If movement is minimal, standard DragEnd fires.
+
+                                        if (moved) {
+                                            setLegalMoves([])
+                                            setSelectedSquare(null)
+                                        }
+                                        // If not moved, we leave selection state alone (handled by onClick or previous Select)
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (!isActive) return
+
+                                        // Select the piece explicitly (Click-to-Move support)
+                                        if (piece.color === game.turn()) {
+                                            setSelectedSquare(piece.square)
+                                            const moves = game.moves({ square: piece.square, verbose: true })
+                                            setLegalMoves(moves.map(m => m.to))
+                                        }
                                     }}
                                     style={{
                                         position: 'absolute',
@@ -606,7 +640,8 @@ export default function Game() {
                                         height: '12.5%',
                                         cursor: canDrag ? 'grab' : 'default',
                                         zIndex: isDragging ? 50 : 10, // Elevate dragged piece
-                                        touchAction: 'none' // Prevent scrolling while dragging
+                                        touchAction: 'none', // Prevent scrolling while dragging
+                                        pointerEvents: 'auto' // Ensure click/drag works
                                     }}
                                 >
                                     <ChessPiece type={piece.type} color={piece.color} />
