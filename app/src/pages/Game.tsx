@@ -64,6 +64,7 @@ export default function Game() {
     const [suggestedMove, setSuggestedMove] = useState<{ from: Square; to: Square } | null>(null)
     const [preMoveEval, setPreMoveEval] = useState<number | null>(null)
     const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
+    const [legalMoves, setLegalMoves] = useState<Square[]>([])
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
@@ -351,11 +352,15 @@ export default function Game() {
 
                                             if (isLegal) {
                                                 handleMove({ from: selectedSquare, to: square })
+                                                setLegalMoves([])
                                             } else {
-                                                setSelectedSquare(null) // Clear selection on illegal move
+                                                setSelectedSquare(null)
+                                                setLegalMoves([])
                                             }
                                         } else if (piece && piece.color === game.turn()) {
                                             setSelectedSquare(square)
+                                            const moves = game.moves({ square, verbose: true })
+                                            setLegalMoves(moves.map(m => m.to))
                                         }
                                     }}
                                     className={`
@@ -367,6 +372,32 @@ export default function Game() {
                             )
                         })
                     )}
+
+                    {/* Legal move indicators (circles) */}
+                    {legalMoves.map((moveSquare) => {
+                        const file = moveSquare.charCodeAt(0) - 'a'.charCodeAt(0)
+                        const rank = '8'.charCodeAt(0) - moveSquare.charCodeAt(1)
+                        const isCapture = game.get(moveSquare) !== null
+
+                        return (
+                            <div
+                                key={`hint-${moveSquare}`}
+                                className="absolute pointer-events-none flex items-center justify-center"
+                                style={{
+                                    left: `${file * 12.5}%`,
+                                    top: `${rank * 12.5}%`,
+                                    width: '12.5%',
+                                    height: '12.5%'
+                                }}
+                            >
+                                {isCapture ? (
+                                    <div className="w-full h-full border-4 border-purple-400/60 rounded-md" />
+                                ) : (
+                                    <div className="w-4 h-4 bg-purple-400/60 rounded-full" />
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
 
                 {/* Floating Pieces Layer */}
@@ -415,6 +446,7 @@ export default function Game() {
                                             }
                                         }
                                         setDraggedPiece(null)
+                                        setLegalMoves([]) // Clear legal moves after drag
                                     }}
                                     style={{
                                         position: 'absolute',
