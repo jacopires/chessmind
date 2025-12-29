@@ -705,9 +705,9 @@ export default function Game() {
                 onDismiss={() => setShowFloatingFeedback(false)}
             />
 
-            <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-6 items-center lg:items-start">
+            <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-4 items-center lg:items-start">
                 {/* Left: AI Orb + Advantage */}
-                <div className="flex flex-row lg:flex-col items-center gap-6 lg:self-stretch lg:py-8 order-2 lg:order-1">
+                <div className="flex flex-row lg:flex-col items-center gap-6 lg:self-stretch lg:py-8 order-2 lg:order-first">
                     <AIOrb isActive={aiOrbActive} />
                     <div className="flex-1 h-4 lg:h-auto w-full lg:w-2 min-h-[10px] lg:min-h-[400px]">
                         <div className="w-full h-full flex justify-center">
