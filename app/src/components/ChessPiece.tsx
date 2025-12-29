@@ -40,7 +40,7 @@ const ChessPiece = ({ type, color, className = '' }: ChessPieceProps) => {
         <img
             src={src}
             alt={`${color} ${type}`}
-            className={`w-full h-full drop-shadow-lg select-none ${className}`}
+            className={`w-full h-full drop-shadow-lg select-none pointer-events-none ${className}`}
             style={{
                 filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.4))',
                 // @ts-ignore
