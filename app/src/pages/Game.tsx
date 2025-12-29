@@ -706,9 +706,13 @@ export default function Game() {
 
             <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-6 items-center lg:items-start">
                 {/* Left: AI Orb + Advantage */}
-                <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-row lg:flex-col items-center gap-6 lg:self-stretch lg:py-8 order-2 lg:order-1">
                     <AIOrb isActive={aiOrbActive} />
-                    <AdvantageBar evaluation={evaluation?.score || 0} />
+                    <div className="flex-1 h-4 lg:h-auto w-full lg:w-2 min-h-[10px] lg:min-h-[400px]">
+                        <div className="w-full h-full flex justify-center">
+                            <AdvantageBar evaluation={evaluation?.score || 0} />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Center: Board + Controls */}
