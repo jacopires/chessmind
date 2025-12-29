@@ -61,12 +61,19 @@ export function MainLayout() {
                         <span className="hidden lg:block font-bold text-sm">Jogar</span>
                     </Link>
 
+
                     <Link
-                        to="#"
-                        className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group"
+                        to="/lab"
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${isActive('/lab')
+                            ? 'bg-purple-500/10 text-primary-light ring-ambient shadow-ambient'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
                     >
-                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">school</span>
-                        <span className="hidden lg:block font-medium text-sm">Aprender</span>
+                        <span className={`material-symbols-outlined transition-all ${isActive('/lab')
+                            ? 'opacity-100'
+                            : 'opacity-40 group-hover:opacity-100 group-hover:text-primary'
+                            }`}>science</span>
+                        <span className="hidden lg:block font-medium text-sm">O Lab</span>
                     </Link>
 
                     <Link
@@ -105,6 +112,6 @@ export function MainLayout() {
             <main className="flex-1 overflow-auto relative z-10">
                 <Outlet />
             </main>
-        </div>
+        </div >
     )
 }
