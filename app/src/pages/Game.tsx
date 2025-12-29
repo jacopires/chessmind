@@ -582,7 +582,7 @@ export default function Game() {
                             return (
                                 <motion.div
                                     key={piece.key}
-                                    layoutId={piece.key}
+                                    layoutId={isDragging ? undefined : piece.key} // Disable layout during drag for free movement
                                     initial={false}
                                     transition={{
                                         type: 'spring',
@@ -591,6 +591,7 @@ export default function Game() {
                                         mass: 0.5
                                     }}
                                     drag={canDrag}
+                                    dragConstraints={boardRef} // Constrain to board but allow free movement
                                     dragElastic={0}
                                     dragMomentum={false}
                                     dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
