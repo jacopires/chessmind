@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { type Square, type Move } from 'chess.js'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -168,6 +168,7 @@ export default function Game() {
             const newPieces: FloatingPiece[] = []
             const counts: Record<string, number> = {}
 
+            // Generate fresh state from board
             board.forEach((row, rankIdx) => {
                 row.forEach((piece, fileIdx) => {
                     if (piece) {
@@ -192,64 +193,97 @@ export default function Game() {
             return
         }
 
-        // Handle Move Updates (Differential logic)
+        // Handle Move Updates (Reconciliation Logic)
         if (currentFen !== lastFenRef.current) {
             const history = game.history({ verbose: true })
             const lastMove = history[history.length - 1]
 
             if (lastMove) {
                 setPieces(prev => {
-                    const next = [...prev]
+                    const board = game.board()
+                    const nextPieces: FloatingPiece[] = []
+                    const usedIds = new Set<string>()
 
-                    // Find moved piece
-                    const pieceIndex = next.findIndex(p => p.square === lastMove.from)
-                    if (pieceIndex !== -1) {
-                        // Remove captured piece if any (at destination, or en-passant)
-                        let captureSquare = lastMove.to
-                        if (lastMove.flags.includes('e')) { // En Passant
-                            const rankResult = parseInt(captureSquare[1]) + (lastMove.color === 'w' ? -1 : 1)
-                            captureSquare = `${captureSquare[0]}${rankResult}` as Square
+                    // Helper to find and claim a piece from previous state
+                    const claimPiece = (searchSquare: Square, type: string, color: string): string | null => {
+                        const match = prev.find(p =>
+                            p.square === searchSquare &&
+                            // Allow type change for promotion (pawn becomes queen)
+                            (p.type === type || (p.type === 'p' && ['q', 'r', 'b', 'n'].includes(type))) &&
+                            p.color === color &&
+                            !usedIds.has(p.key)
+                        )
+                        if (match) {
+                            usedIds.add(match.key)
+                            return match.key
                         }
-
-                        // Filter out captured pieces
-                        const withoutCaptured = next.filter(p => p.square !== captureSquare)
-
-                        // Update moved piece
-                        const movedPiece = withoutCaptured.find(p => p.square === lastMove.from)
-                        if (movedPiece) {
-                            movedPiece.square = lastMove.to
-
-                            // Handling Promotion
-                            if (lastMove.promotion) {
-                                movedPiece.type = lastMove.promotion as any
-                                // Update key to reflect new identity? No, keep stable key for smooth transition
-                                // Or maybe update image but keep ID? 
-                                // Ideally we keep ID but ChessPiece component renders new type.
-                                // Type is part of state, so it updates.
-                            }
-
-                            // Handling Castling
-                            if (lastMove.flags.includes('k') || lastMove.flags.includes('q')) {
-                                const rank = lastMove.color === 'w' ? '1' : '8'
-                                let rookFrom: Square, rookTo: Square
-
-                                if (lastMove.flags.includes('k')) { // Kingside
-                                    rookFrom = `h${rank}` as Square
-                                    rookTo = `f${rank}` as Square
-                                } else { // Queenside
-                                    rookFrom = `a${rank}` as Square
-                                    rookTo = `d${rank}` as Square
-                                }
-
-                                const rook = withoutCaptured.find(p => p.square === rookFrom)
-                                if (rook) rook.square = rookTo
-                            }
-                        }
-                        return withoutCaptured
+                        return null
                     }
 
-                    // Fallback: If differential fails (shouldn't happen), re-scan
-                    return prev
+                    // 1. Process Movers (Priority to preserve animation)
+
+                    // Identify Primary Move (From -> To)
+                    // If castling, we handle king here.
+                    const isCastling = lastMove.flags.includes('k') || lastMove.flags.includes('q')
+
+                    // Generate list of squares to process specifically as "moved"
+                    const movedMappings: { from: Square, to: Square }[] = [
+                        { from: lastMove.from, to: lastMove.to }
+                    ]
+
+                    if (isCastling) {
+                        const rank = lastMove.color === 'w' ? '1' : '8'
+                        if (lastMove.flags.includes('k')) { // Kingside
+                            movedMappings.push({ from: `h${rank}` as Square, to: `f${rank}` as Square })
+                        } else { // Queenside
+                            movedMappings.push({ from: `a${rank}` as Square, to: `d${rank}` as Square })
+                        }
+                    }
+
+                    // 2. Scan current board and map to previous IDs
+                    // 2. Scan current board and map to previous IDs
+
+                    board.forEach((row, rankIdx) => {
+                        row.forEach((piece, fileIdx) => {
+                            if (piece) {
+                                const file = String.fromCharCode(97 + fileIdx)
+                                const rank = `${8 - rankIdx}`
+                                const square = `${file}${rank}` as Square
+
+                                let key: string | null = null
+
+                                // Check if this piece is a "Mover" (arrived at 'to' from 'from')
+                                const moveMap = movedMappings.find(m => m.to === square)
+                                if (moveMap) {
+                                    // Try to claim the piece that was at 'from'
+                                    key = claimPiece(moveMap.from, piece.type, piece.color)
+                                }
+
+                                // If not a mover (or claim failed), try to match Stationary piece (same square)
+                                if (!key) {
+                                    key = claimPiece(square, piece.type, piece.color)
+                                }
+
+                                // Fallback: Generate new ID (Animation will pop, but state is consistent)
+                                if (!key) {
+                                    // We need to ensure we don't collide with existing keys in 'nextPieces'
+                                    // But since we are building nextPieces from scratch, collision risk is vs 'usedIds'? 
+                                    // To be safe, we might use a timestamp or random, but consistent naming is better.
+                                    // For now, let's assume we won't need many fallbacks.
+                                    key = `${piece.color}${piece.type}-new-${Date.now()}-${Math.random()}`
+                                }
+
+                                nextPieces.push({
+                                    square,
+                                    type: piece.type,
+                                    color: piece.color,
+                                    key
+                                })
+                            }
+                        })
+                    })
+
+                    return nextPieces
                 })
             }
             lastFenRef.current = currentFen
