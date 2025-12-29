@@ -576,10 +576,11 @@ export default function Game() {
                                     dragElastic={0.1}
                                     dragMomentum={false}
                                     whileDrag={{
-                                        scale: 1.1,
+                                        scale: 1.05, // Reduced from 1.1 for less "floating" feel
                                         zIndex: 100,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))'
+                                        // Tighter, sharper shadow to feel closer to board
+                                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
