@@ -601,7 +601,7 @@ export default function Game() {
                                         cursor: 'grabbing',
                                         filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.5))'
                                     }}
-                                    onDragStart={(_, info) => {
+                                    onDragStart={(event) => {
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
                                         const moves = game.moves({ square: piece.square, verbose: true })
@@ -618,31 +618,33 @@ export default function Game() {
                                             const squareW = boardRect.width / 8
                                             const squareH = boardRect.height / 8
 
-                                            // Calculate Visual Center of the Piece
+                                            // Calculate Visual Center of the Piece (Viewport relative)
                                             const centerX = boardRect.left + (colIdx * squareW) + (squareW / 2)
                                             const centerY = boardRect.top + (rowIdx * squareH) + (squareH / 2)
 
-                                            // Mouse Viewport Position
-                                            const mouseX = info.point.x - window.scrollX
-                                            const mouseY = info.point.y - window.scrollY
+                                            // Mouse Viewport Position (Robust extraction)
+                                            const e = event as any
+                                            const clientX = e.touches?.[0] ? e.touches[0].clientX : e.clientX
+                                            const clientY = e.touches?.[0] ? e.touches[0].clientY : e.clientY
 
                                             // Store Offset
                                             dragOffsetRef.current = {
-                                                x: centerX - mouseX,
-                                                y: centerY - mouseY
+                                                x: centerX - clientX,
+                                                y: centerY - clientY
                                             }
                                         }
                                     }}
-                                    onDrag={(_, info) => {
+                                    onDrag={(event) => {
                                         const boardRect = boardRef.current?.getBoundingClientRect()
                                         if (!boardRect) return
 
-                                        const mouseX = info.point.x - window.scrollX
-                                        const mouseY = info.point.y - window.scrollY
+                                        const e = event as any
+                                        const clientX = e.touches?.[0] ? e.touches[0].clientX : e.clientX
+                                        const clientY = e.touches?.[0] ? e.touches[0].clientY : e.clientY
 
                                         // Apply offset to get Piece Center
-                                        const targetX = mouseX + dragOffsetRef.current.x
-                                        const targetY = mouseY + dragOffsetRef.current.y
+                                        const targetX = clientX + dragOffsetRef.current.x
+                                        const targetY = clientY + dragOffsetRef.current.y
 
                                         const relX = targetX - boardRect.left
                                         const relY = targetY - boardRect.top
@@ -661,15 +663,16 @@ export default function Game() {
                                             setDragOverSquare(null)
                                         }
                                     }}
-                                    onDragEnd={(_, info) => {
+                                    onDragEnd={(event) => {
                                         const boardRect = boardRef.current?.getBoundingClientRect()
 
                                         if (boardRect) {
-                                            const mouseX = info.point.x - window.scrollX
-                                            const mouseY = info.point.y - window.scrollY
+                                            const e = event as any
+                                            const clientX = e.changedTouches?.[0] ? e.changedTouches[0].clientX : (e.touches?.[0]?.clientX || e.clientX)
+                                            const clientY = e.changedTouches?.[0] ? e.changedTouches[0].clientY : (e.touches?.[0]?.clientY || e.clientY)
 
-                                            const targetX = mouseX + dragOffsetRef.current.x
-                                            const targetY = mouseY + dragOffsetRef.current.y
+                                            const targetX = clientX + dragOffsetRef.current.x
+                                            const targetY = clientY + dragOffsetRef.current.y
 
                                             const relX = targetX - boardRect.left
                                             const relY = targetY - boardRect.top
