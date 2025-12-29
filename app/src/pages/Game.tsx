@@ -591,7 +591,6 @@ export default function Game() {
                                     }}
                                     drag={canDrag}
                                     dragElastic={0}
-                                    dragSnapToOrigin={true}
                                     dragMomentum={false}
                                     dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
                                     whileDrag={{
@@ -629,8 +628,10 @@ export default function Game() {
                                         }
                                     }}
                                     onDragEnd={(_, info) => {
-                                        // Use raw cursor position for drop detection
+                                        // Chess.com precision: Detect target and handle movement
                                         const boardRect = boardRef.current?.getBoundingClientRect()
+                                        let validMove = false
+
                                         if (boardRect) {
                                             const viewportX = info.point.x - window.scrollX
                                             const viewportY = info.point.y - window.scrollY
@@ -652,7 +653,9 @@ export default function Game() {
                                                     const isLegal = moves.some(m => m.to === targetSquare)
 
                                                     if (isLegal) {
+                                                        // VALID MOVE: Execute immediately, layoutId handles animation
                                                         handleMove({ from: piece.square, to: targetSquare })
+                                                        validMove = true
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
                                                     }
@@ -660,8 +663,14 @@ export default function Game() {
                                             }
                                         }
 
+                                        // Clear drag state
                                         setDraggedPiece(null)
                                         setDragOverSquare(null)
+
+                                        // If invalid move, clear legal moves too
+                                        if (!validMove) {
+                                            setLegalMoves([])
+                                        }
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation()
