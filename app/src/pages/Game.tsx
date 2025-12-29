@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useLocation, Link } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
 import { Chess, type Square } from 'chess.js'
 import { motion } from 'framer-motion'
 import ChessPiece from '../components/ChessPiece'
-import { AnimatedOrbs } from '../components/AnimatedOrbs'
 import { AIOrb } from '../components/AIOrb'
 import { FloatingFeedback } from '../components/FloatingFeedback'
 import { AdvantageBar } from '../components/AdvantageBar'
@@ -381,173 +380,120 @@ export default function Game() {
     }
 
     return (
-        <div className="bg-slate-950 font-display text-white h-screen flex overflow-hidden relative">
-            {/* Animated Background Orbs - The Void */}
-            <AnimatedOrbs />
+        <div className="flex-1 flex justify-center items-center p-6">
+            {/* Floating Feedback */}
+            <FloatingFeedback
+                message={currentFeedback}
+                isVisible={showFloatingFeedback}
+                onDismiss={() => setShowFloatingFeedback(false)}
+            />
 
-            {/* Left Sidebar (Navigation) - Floating Minimal */}
-            <aside className="w-20 lg:w-64 bg-white/[0.01] backdrop-blur-2xl flex flex-col shrink-0 z-20 relative">
-                <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6">
-                    <Link to="/" className="flex items-center gap-3 group">
-                        <div className="size-10 flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark rounded-xl text-white shadow-ambient group-hover:scale-105 transition-transform">
-                            <span className="material-symbols-outlined text-xl">smart_toy</span>
-                        </div>
-                        <h2 className="hidden lg:block text-white text-lg font-bold leading-tight tracking-tight">ChessMind</h2>
-                    </Link>
+            {/* Main Content */}
+            <div className="flex items-center gap-6 max-w-[1400px] w-full">
+                {/* AIOrb - Left Position */}
+                <div className="flex-shrink-0">
+                    <AIOrb emotion="analytical" isActive={aiOrbActive} />
                 </div>
 
-                <nav className="flex-1 py-6 flex flex-col gap-2 px-3">
-                    <Link to="/new-game" className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">dashboard</span>
-                        <span className="hidden lg:block font-medium text-sm">Dashboard</span>
-                    </Link>
-                    <Link to="/new-game" className="flex items-center gap-3 px-3 py-3 bg-purple-500/10 text-primary-light rounded-xl ring-ambient shadow-ambient">
-                        <span className="material-symbols-outlined opacity-100">sports_esports</span>
-                        <span className="hidden lg:block font-bold text-sm">Jogar</span>
-                    </Link>
-                    <Link to="#" className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">school</span>
-                        <span className="hidden lg:block font-medium text-sm">Aprender</span>
-                    </Link>
-                    <Link to="#" className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">extension</span>
-                        <span className="hidden lg:block font-medium text-sm">Puzzles</span>
-                    </Link>
-                </nav>
+                {/* Constrained Container for Perfect Alignment */}
+                <div className="flex flex-col gap-3 w-full max-w-md lg:max-w-none lg:w-auto lg:h-[85vh] lg:aspect-[9/11]">
 
-                <div className="p-4 space-y-4">
-                    <Link to="/settings" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group">
-                        <span className="material-symbols-outlined opacity-40 group-hover:opacity-100 transition-opacity">settings</span>
-                        <span className="hidden lg:block font-medium text-sm">Configurações</span>
-                    </Link>
-
-                    <div className="flex items-center gap-3 px-2">
-                        <div className="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-primary/20 ring-ambient cursor-pointer transition-transform hover:scale-105" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuD8cU5gMr__zp2ZQt05r2_8_RPYu2Nu5gVF3W9dPJt4_wkpZg0thFFy7YXfJhQTyXVmNqGun3a_z7mtJqptWBnek_B8VPAnNsu9JdhtIMPmccX2t0ZleZJlSIQIQ8vVwCgT_sYv97_ZJVHRu-XOTf7LMT3tqzRrvUzKoMRud_3ZcL_rbIsgXLbkVFDXFzqPq_aARSna0ZvkPJDTlzEaPIn2FGNaFsx2xwveka2sUpeXDh_hTO3_oBrJgbH_yTO1aUyndF4Yr-CjnyT8")' }}></div>
-                        <div className="hidden lg:block">
-                            <div className="text-sm font-bold text-white">Você</div>
-                            <div className="text-xs text-gray-500">Premium Member</div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <main className="flex-1 flex overflow-hidden relative">
-                {/* Floating Feedback */}
-                <FloatingFeedback
-                    message={currentFeedback}
-                    isVisible={showFloatingFeedback}
-                    onDismiss={() => setShowFloatingFeedback(false)}
-                />
-
-                {/* Main Content (Board) - Glass Morphism */}
-                <div className="flex-1 flex items-center justify-center p-8 relative">
-                    {/* AI Orb - Floating */}
-                    <div className="absolute top-8 right-8 z-50">
-                        <AIOrb emotion="analytical" isActive={aiOrbActive} />
-                    </div>
-
-                    {/* Constrained Container for Perfect Alignment */}
-                    <div className="flex flex-col gap-3 w-full max-w-md lg:max-w-none lg:w-auto lg:h-[85vh] lg:aspect-[9/11]">
-
-
-                        {/* Player Top (Opponent) - Pure Typography */}
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="w-full flex items-center justify-between py-2"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-lg text-gray-400">smart_toy</span>
-                                    </div>
-                                    {activeColor === 'b' && (
-                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-                                    )}
+                    {/* Player Top (Opponent) - Pure Typography */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full flex items-center justify-between py-2"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-lg text-gray-400">smart_toy</span>
                                 </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-200">Aristóteles (Nível 1)</h3>
-                                    <p className="text-xs opacity-50 font-mono">3200</p>
-                                </div>
+                                {activeColor === 'b' && (
+                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
+                                )}
                             </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-200">Aristóteles (Nível 1)</h3>
+                                <p className="text-xs opacity-50 font-mono">3200</p>
+                            </div>
+                        </div>
 
-                            {/* Floating Timer */}
-                            <motion.div
-                                className="font-mono text-2xl font-bold tracking-tight tabular-nums"
-                                style={{
-                                    color: activeColor === 'b' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
-                                    textShadow: activeColor === 'b' ? '0 0 20px rgba(168, 85, 247, 0.5)' : 'none',
-                                    transition: 'all 0.3s ease'
-                                }}
-                            >
-                                {Math.floor(blackTime / 60)}:{(blackTime % 60).toString().padStart(2, '0')}
-                            </motion.div>
+                        {/* Floating Timer */}
+                        <motion.div
+                            className="font-mono text-2xl font-bold tracking-tight tabular-nums"
+                            style={{
+                                color: activeColor === 'b' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
+                                textShadow: activeColor === 'b' ? '0 0 20px rgba(168, 85, 247, 0.5)' : 'none',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            {Math.floor(blackTime / 60)}:{(blackTime % 60).toString().padStart(2, '0')}
                         </motion.div>
+                    </motion.div>
 
 
-                        {/* Board with Advantage Bar - Suspension System */}
-                        <div className="flex items-center gap-4">
-                            {/* Ultra-Thin Advantage Bar */}
-                            <div className="h-full">
-                                <AdvantageBar evaluation={evaluation?.score || 0} />
-                            </div>
-
-                            {/* Board Container - Suspended */}
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.1 }}
-                                className={`relative w-full aspect-square glass-strong rounded-2xl overflow-hidden border border-white/10 shadow-ambient transition-all duration-500 ${aiOrbActive ? 'brightness-75' : 'brightness-100'
-                                    }`}
-                            >
-                                {/* Arrows Layer */}
-                                {renderArrows()}
-
-                                {/* Board Grid */}
-                                <div className="w-full h-full grid grid-cols-8 grid-rows-8 font-serif">
-                                    {renderBoard()}
-                                </div>
-                            </motion.div>
+                    {/* Board with Advantage Bar - Suspension System */}
+                    <div className="flex items-center gap-4">
+                        {/* Ultra-Thin Advantage Bar */}
+                        <div className="h-full">
+                            <AdvantageBar evaluation={evaluation?.score || 0} />
                         </div>
 
-                        {/* Player Bottom (User) - Pure Typography */}
+                        {/* Board Container - Suspended */}
                         <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="w-full flex items-center justify-between py-2"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.1 }}
+                            className={`relative w-full aspect-square glass-strong rounded-2xl overflow-hidden border border-white/10 shadow-ambient transition-all duration-500 ${aiOrbActive ? 'brightness-75' : 'brightness-100'
+                                }`}
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-lg text-gray-400">person</span>
-                                    </div>
-                                    {activeColor === 'w' && (
-                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-200">Você</h3>
-                                    <p className="text-xs opacity-50 font-mono">1200</p>
-                                </div>
-                            </div>
+                            {/* Arrows Layer */}
+                            {renderArrows()}
 
-                            {/* Floating Timer */}
-                            <motion.div
-                                className="font-mono text-2xl font-bold tracking-tight tabular-nums"
-                                style={{
-                                    color: activeColor === 'w' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
-                                    textShadow: activeColor === 'w' ? '0 0 20px rgba(255, 255, 255, 0.5)' : 'none',
-                                    transition: 'all 0.3s ease'
-                                }}
-                            >
-                                {Math.floor(whiteTime / 60)}:{(whiteTime % 60).toString().padStart(2, '0')}
-                            </motion.div>
+                            {/* Board Grid */}
+                            <div className="w-full h-full grid grid-cols-8 grid-rows-8 font-serif">
+                                {renderBoard()}
+                            </div>
                         </motion.div>
                     </div>
-                </div>
 
-            </main>
+                    {/* Player Bottom (User) - Pure Typography */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="w-full flex items-center justify-between py-2"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <div className="size-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-lg text-gray-400">person</span>
+                                </div>
+                                {activeColor === 'w' && (
+                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-200">Você</h3>
+                                <p className="text-xs opacity-50 font-mono">1200</p>
+                            </div>
+                        </div>
+
+                        {/* Floating Timer */}
+                        <motion.div
+                            className="font-mono text-2xl font-bold tracking-tight tabular-nums"
+                            style={{
+                                color: activeColor === 'w' ? '#fff' : 'rgba(156, 163, 175, 0.6)',
+                                textShadow: activeColor === 'w' ? '0 0 20px rgba(255, 255, 255, 0.5)' : 'none',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            {Math.floor(whiteTime / 60)}:{(whiteTime % 60).toString().padStart(2, '0')}
+                        </motion.div>
+                    </motion.div>
+                </div>
+            </div>
         </div>
     )
 }
