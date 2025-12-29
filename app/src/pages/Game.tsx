@@ -601,13 +601,14 @@ export default function Game() {
                                     }}
                                     drag={canDrag}
                                     dragElastic={0}
+                                    dragSnapToOrigin={true} // Restored for robust fallback
                                     dragMomentum={false}
                                     dragTransition={{ bounceStiffness: 500, bounceDamping: 40 }}
                                     whileDrag={{
-                                        scale: 1.1,
+                                        scale: 1.05, // Grounded feel
                                         zIndex: 100,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.5))'
+                                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' // Tighter shadow
                                     }}
                                     onDragStart={(event) => {
                                         // Calculate offset from cursor to piece center (Chess.com style)
