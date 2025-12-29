@@ -157,6 +157,7 @@ export default function Game() {
     // State for stable pieces (prevents ID swapping during moves)
     const [pieces, setPieces] = useState<FloatingPiece[]>([])
     const lastFenRef = useRef<string>('')
+    const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null)
 
     // Initialize/Sync Pieces
     useEffect(() => {
@@ -451,6 +452,29 @@ export default function Game() {
             <div ref={boardRef} className="relative aspect-square w-full max-w-2xl mx-auto">
                 {/* Board Grid (empty cells) */}
                 <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
+                    {/* Drag Target Highlight */}
+                    {dragOverSquare && (
+                        (() => {
+                            const orientation = userColor === 'black' ? 'b' : 'w'
+                            const rankIdx = 7 - (dragOverSquare.charCodeAt(1) - '1'.charCodeAt(0))
+                            const fileIdx = dragOverSquare.charCodeAt(0) - 'a'.charCodeAt(0)
+                            const x = orientation === 'w' ? fileIdx : 7 - fileIdx
+                            const y = orientation === 'w' ? rankIdx : 7 - rankIdx
+
+                            return (
+                                <div
+                                    className="absolute bg-white/40 z-0 pointer-events-none rounded-sm transition-all duration-75"
+                                    style={{
+                                        left: `${x * 12.5}%`,
+                                        top: `${y * 12.5}%`,
+                                        width: '12.5%',
+                                        height: '12.5%'
+                                    }}
+                                />
+                            )
+                        })()
+                    )}
+
                     {ranks.map((rank, rankIdx) =>
                         files.map((file, fileIdx) => {
                             const square = `${file}${rank}` as Square
@@ -589,11 +613,16 @@ export default function Game() {
                                         const moves = game.moves({ square: piece.square, verbose: true })
                                         setLegalMoves(moves.map(m => m.to))
                                     }}
+                                    onDrag={(_, info) => {
+                                        // Track drag target for visual feedback
+                                        const hover = getSquareFromPointer(info.point)
+                                        setDragOverSquare(hover)
+                                    }}
                                     onDragEnd={(_, info) => {
                                         const targetSquare = getSquareFromPointer(info.point)
                                         let moved = false
 
-                                        // Attempt move if dropped on different valid square
+                                        // Attempt move if dropped on different valid square (and legal)
                                         if (targetSquare && targetSquare !== piece.square) {
                                             const moves = game.moves({ square: piece.square, verbose: true })
                                             const isLegal = moves.some(m => m.to === targetSquare)
@@ -606,6 +635,7 @@ export default function Game() {
 
                                         // Cleanup
                                         setDraggedPiece(null)
+                                        setDragOverSquare(null)
 
                                         // Only clear legal moves if move succeeded
                                         // If move failed (snap back), we might want to KEEP the selection if it was a "click-like" action
@@ -626,7 +656,21 @@ export default function Game() {
                                         e.stopPropagation()
                                         if (!isActive) return
 
-                                        // Select the piece explicitly (Click-to-Move support)
+                                        // Select or Capture
+                                        if (selectedSquare) {
+                                            // 1. Try to capture
+                                            const moves = game.moves({ square: selectedSquare, verbose: true })
+                                            const isLegal = moves.some(m => m.to === piece.square)
+
+                                            if (isLegal) {
+                                                handleMove({ from: selectedSquare, to: piece.square })
+                                                setLegalMoves([])
+                                                setSelectedSquare(null)
+                                                return
+                                            }
+                                        }
+
+                                        // 2. Otherwise select (if own piece)
                                         if (piece.color === game.turn()) {
                                             setSelectedSquare(piece.square)
                                             const moves = game.moves({ square: piece.square, verbose: true })
