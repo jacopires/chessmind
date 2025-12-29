@@ -518,8 +518,7 @@ export default function Game() {
                         })
                     )}
 
-                    {/* Legal move indicators (circles) */}
-                    {/* Legal move indicators (circles) */}
+                    {/* Legal move indicators (circles) - Chess.com style */}
                     {legalMoves.map((moveSquare) => {
                         const isCapture = game.get(moveSquare) !== null
                         const rankIdx = 7 - (moveSquare.charCodeAt(1) - '1'.charCodeAt(0))
@@ -529,6 +528,9 @@ export default function Game() {
                         const orientation = userColor === 'black' ? 'b' : 'w'
                         const x = orientation === 'w' ? fileIdx : 7 - fileIdx
                         const y = orientation === 'w' ? rankIdx : 7 - rankIdx
+
+                        // Determine if square is light or dark for dot contrast
+                        const isLightSquare = (x + y) % 2 === 0
 
                         return (
                             <div
@@ -542,9 +544,9 @@ export default function Game() {
                                 }}
                             >
                                 {isCapture ? (
-                                    <div className="w-full h-full border-[6px] border-white/30 rounded-full" />
+                                    <div className={`w-full h-full border-[6px] ${isLightSquare ? 'border-black/20' : 'border-white/20'} rounded-full`} />
                                 ) : (
-                                    <div className="w-4 h-4 bg-white/20 rounded-full backdrop-blur-sm shadow-inner" />
+                                    <div className={`w-[30%] h-[30%] ${isLightSquare ? 'bg-black/20' : 'bg-white/20'} rounded-full`} />
                                 )}
                             </div>
                         )
@@ -598,15 +600,14 @@ export default function Game() {
                                         mass: 0.5
                                     }}
                                     drag={canDrag}
-                                    dragSnapToOrigin={true} // IMPORTANT: Reverts if not handled
-                                    dragElastic={0.1}
+                                    dragElastic={0}
                                     dragMomentum={false}
+                                    dragTransition={{ bounceStiffness: 500, bounceDamping: 40 }}
                                     whileDrag={{
-                                        scale: 1.05, // Reduced from 1.1 for less "floating" feel
+                                        scale: 1.1,
                                         zIndex: 100,
                                         cursor: 'grabbing',
-                                        // Tighter, sharper shadow to feel closer to board
-                                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))'
+                                        filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.5))'
                                     }}
                                     onDragStart={(event) => {
                                         // Calculate offset from cursor to piece center (Chess.com style)
@@ -712,7 +713,7 @@ export default function Game() {
                     </AnimatePresence>
                 </div>
 
-                {/* AI Highlights */}
+                {/* AI Highlights - Soft Purple Flash */}
                 {suggestedMove && (
                     <>
                         {[suggestedMove.from, suggestedMove.to].map((square, idx) => {
@@ -722,24 +723,26 @@ export default function Game() {
                             return (
                                 <motion.div
                                     key={`highlight-${square}`}
-                                    className="absolute pointer-events-none rounded-lg"
+                                    className="absolute pointer-events-none rounded-sm"
                                     style={{
                                         left: position.left,
                                         top: position.top,
                                         width: '12.5%',
                                         height: '12.5%'
                                     }}
+                                    initial={{ backgroundColor: 'rgba(168, 85, 247, 0)' }}
                                     animate={{
-                                        boxShadow: [
-                                            '0 0 0 0 rgba(168, 85, 247, 0)',
-                                            '0 0 0 8px rgba(168, 85, 247, 0.6)',
-                                            '0 0 0 0 rgba(168, 85, 247, 0)'
+                                        backgroundColor: [
+                                            'rgba(168, 85, 247, 0)',
+                                            'rgba(168, 85, 247, 0.4)',
+                                            'rgba(168, 85, 247, 0)'
                                         ]
                                     }}
                                     transition={{
                                         repeat: Infinity,
-                                        duration: 1.5,
-                                        delay: idx * 0.75
+                                        duration: 2,
+                                        ease: 'easeInOut',
+                                        delay: idx * 0.5
                                     }}
                                 />
                             )
