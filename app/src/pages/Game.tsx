@@ -157,7 +157,6 @@ export default function Game() {
     // State for stable pieces (prevents ID swapping during moves)
     const [pieces, setPieces] = useState<FloatingPiece[]>([])
     const lastFenRef = useRef<string>('')
-    const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null)
 
     // Initialize/Sync Pieces
     useEffect(() => {
@@ -423,28 +422,6 @@ export default function Game() {
             <div ref={boardRef} className="relative aspect-square w-full max-w-2xl mx-auto">
                 {/* Board Grid (empty cells) */}
                 <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
-                    {/* Drag Target Highlight */}
-                    {dragOverSquare && (
-                        (() => {
-                            const orientation = userColor === 'black' ? 'b' : 'w'
-                            const rankIdx = 7 - (dragOverSquare.charCodeAt(1) - '1'.charCodeAt(0))
-                            const fileIdx = dragOverSquare.charCodeAt(0) - 'a'.charCodeAt(0)
-                            const x = orientation === 'w' ? fileIdx : 7 - fileIdx
-                            const y = orientation === 'w' ? rankIdx : 7 - rankIdx
-
-                            return (
-                                <div
-                                    className="absolute bg-white/40 z-0 pointer-events-none rounded-sm transition-all duration-75"
-                                    style={{
-                                        left: `${x * 12.5}%`,
-                                        top: `${y * 12.5}%`,
-                                        width: '12.5%',
-                                        height: '12.5%'
-                                    }}
-                                />
-                            )
-                        })()
-                    )}
 
                     {ranks.map((rank, rankIdx) =>
                         files.map((file, fileIdx) => {
@@ -505,7 +482,7 @@ export default function Game() {
                         return (
                             <div
                                 key={`hint-${moveSquare}`}
-                                className="absolute pointer-events-none flex items-center justify-center z-20"
+                                className="absolute pointer-events-none flex items-center justify-center z-[5]"
                                 style={{
                                     left: `${x * 12.5}%`,
                                     top: `${y * 12.5}%`,
@@ -523,23 +500,21 @@ export default function Game() {
                     })}
                 </div>
 
-                {/* Board Coordinates */}
-                <div className="absolute top-0 right-0 bottom-0 pointer-events-none">
+                {/* Board Coordinates - Subtle opacity */}
+                <div className="absolute top-0 right-0 bottom-0 pointer-events-none opacity-30">
                     {ranks.map((rank, i) => (
                         <span key={rank}
-                            className={`absolute right-1 text-[10px] font-bold ${(i + 7) % 2 === 0 ? 'text-slate-500' : 'text-slate-300'
-                                }`}
+                            className={`absolute right-1 text-[10px] font-bold ${(i + 7) % 2 === 0 ? 'text-slate-600' : 'text-slate-400'}`}
                             style={{ top: `${i * 12.5 + 0.5}%` }}
                         >
                             {rank}
                         </span>
                     ))}
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+                <div className="absolute bottom-0 left-0 right-0 pointer-events-none opacity-30">
                     {files.map((file, i) => (
                         <span key={file}
-                            className={`absolute bottom-0.5 text-[10px] font-bold ${i % 2 === 0 ? 'text-slate-300' : 'text-slate-500'
-                                }`}
+                            className={`absolute bottom-0.5 text-[10px] font-bold ${i % 2 === 0 ? 'text-slate-400' : 'text-slate-600'}`}
                             style={{ left: `${i * 12.5 + 0.5}%` }}
                         >
                             {file}
@@ -600,9 +575,10 @@ export default function Game() {
                                         dragSnapToOrigin={true}
                                         whileDrag={{
                                             scale: 1.15,
+                                            rotate: 2,
                                             zIndex: 9999,
                                             cursor: 'grabbing',
-                                            boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+                                            filter: 'drop-shadow(0 20px 20px rgba(0,0,0,0.5))'
                                         }}
                                         onDragStart={() => {
                                             setDraggedPiece(piece)
@@ -626,12 +602,7 @@ export default function Game() {
                                             const rowIdx = Math.floor((relY / boardRect.height) * 8)
 
                                             if (colIdx >= 0 && colIdx < 8 && rowIdx >= 0 && rowIdx < 8) {
-                                                const file = orientation === 'w' ? colIdx : 7 - colIdx
-                                                const rank = orientation === 'w' ? 7 - rowIdx : rowIdx
-                                                const hover = `${String.fromCharCode(97 + file)}${rank + 1}` as Square
-                                                setDragOverSquare(hover)
-                                            } else {
-                                                setDragOverSquare(null)
+                                                // Piece is over a valid square (could add subtle hover effect here)
                                             }
                                         }}
                                         onDragEnd={(_, info) => {
@@ -666,7 +637,6 @@ export default function Game() {
                                             }
 
                                             setDraggedPiece(null)
-                                            setDragOverSquare(null)
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation()
