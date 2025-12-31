@@ -557,7 +557,7 @@ export default function Game() {
                                 <motion.div
                                     key={piece.key}
                                     layoutId={piece.key}
-                                    layout={!disableLayout}
+                                    layout={!disableLayout && !isDragging}
                                     initial={false}
                                     drag={canDrag}
                                     dragConstraints={boardRef}
@@ -587,6 +587,7 @@ export default function Game() {
                                         filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.3))'
                                     } : undefined}
                                     onDragStart={() => {
+                                        setDisableLayout(true)
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
                                         const moves = game.moves({ square: piece.square, verbose: true })
@@ -629,8 +630,9 @@ export default function Game() {
                                             }
                                         }
 
-                                        // Invalid move - spring back via animate={{ x: 0, y: 0 }}
+                                        // Invalid move - spring back
                                         setDraggedPiece(null)
+                                        requestAnimationFrame(() => setDisableLayout(false))
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation()
