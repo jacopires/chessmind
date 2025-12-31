@@ -419,7 +419,7 @@ export default function Game() {
         const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
 
         return (
-            <div ref={boardRef} className="relative aspect-square w-full max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto">
+            <div ref={boardRef} className="relative w-full h-full">
                 {/* Board Grid (empty cells) */}
                 <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
 
@@ -732,37 +732,38 @@ export default function Game() {
     }
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex justify-center items-center p-2 lg:p-4 overflow-hidden">
+        <div className="h-[calc(100vh-4rem)] flex justify-center items-center p-4 overflow-hidden">
             <FloatingFeedback
                 message={currentFeedback}
                 isVisible={showFloatingFeedback}
                 onDismiss={() => setShowFloatingFeedback(false)}
             />
 
-            <div className="w-full max-w-5xl h-full flex flex-col lg:flex-row gap-2 lg:gap-4 items-center lg:items-center justify-center">
-                {/* Left: AI Orb + Advantage */}
-                {/* Left: AI Orb + Advantage */}
-                <div className="flex flex-row lg:flex-col items-center gap-6 lg:self-stretch lg:py-8 order-2 lg:order-first">
+            <div className="flex gap-4 items-center h-full">
+                {/* Left: AI Orb */}
+                <div className="hidden lg:flex flex-col items-center justify-center">
                     <AIOrb isActive={aiOrbActive} />
                 </div>
 
-                {/* Center: Board with integrated timers */}
-                <div className="flex flex-col">
-                    {/* Opponent Timer - Above board */}
-                    <div className="flex justify-between items-center px-1 py-1 mb-1">
+                {/* Center: Board with timers */}
+                <div className="flex flex-col h-full justify-center">
+                    {/* Opponent Timer */}
+                    <div className="flex justify-between items-center mb-2 w-full">
                         <span className="text-sm font-semibold text-white/80">
                             {userColor === 'white' ? 'Aristóteles' : 'Você'}
                         </span>
-                        <span className="text-lg font-mono font-bold bg-slate-800/80 px-3 py-1 rounded">
+                        <span className="text-lg font-mono font-bold bg-slate-700/80 px-3 py-1 rounded">
                             {formatTime(userColor === 'white' ? blackTime : whiteTime)}
                         </span>
                     </div>
 
-                    {/* Board */}
-                    {renderBoard()}
+                    {/* Board - takes remaining height */}
+                    <div className="flex-shrink-0" style={{ width: 'min(70vh, 600px)', height: 'min(70vh, 600px)' }}>
+                        {renderBoard()}
+                    </div>
 
-                    {/* Player Timer - Below board */}
-                    <div className="flex justify-between items-center px-1 py-1 mt-1">
+                    {/* Player Timer */}
+                    <div className="flex justify-between items-center mt-2 w-full">
                         <span className="text-sm font-semibold text-white/80">
                             {userColor === 'white' ? 'Você' : 'Aristóteles'}
                         </span>
@@ -772,8 +773,8 @@ export default function Game() {
                     </div>
                 </div>
 
-                {/* Right: Game Info - Hidden on mobile */}
-                <div className="hidden lg:block w-48 xl:w-56 space-y-2">
+                {/* Right: Statistics */}
+                <div className="hidden lg:block w-48 self-center">
                     <div className="glass-strong rounded-lg p-3">
                         <h3 className="text-xs font-bold opacity-60 mb-2">ESTATÍSTICAS</h3>
                         <div className="space-y-1 text-xs">
