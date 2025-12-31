@@ -577,7 +577,7 @@ export default function Game() {
                                         }
                                     }}
                                     whileDrag={{
-                                        scale: 1.1,
+                                        scale: 1.15,
                                         zIndex: 50,
                                         cursor: 'grabbing',
                                         filter: 'drop-shadow(0 25px 20px rgba(0,0,0,0.4))'
