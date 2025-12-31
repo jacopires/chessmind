@@ -551,24 +551,27 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Zero oscillation */}
+                                {/* Draggable piece - Super-damped */}
                                 <motion.div
                                     drag={canDrag}
                                     dragConstraints={boardRef}
                                     dragElastic={0}
                                     dragMomentum={false}
-                                    dragSnapToOrigin={true}
-                                    dragTransition={{
-                                        power: 0,
-                                        timeConstant: 200,
-                                        modifyTarget: undefined
+                                    animate={{
+                                        x: 0,
+                                        y: 0
+                                    }}
+                                    transition={{
+                                        type: 'spring',
+                                        stiffness: 800,
+                                        damping: 60,
+                                        mass: 0.5
                                     }}
                                     whileDrag={{
-                                        scale: 1.08,
-                                        rotate: 0.5,
+                                        scale: 1.1,
                                         zIndex: 50,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.5))'
+                                        filter: 'drop-shadow(0 25px 20px rgba(0,0,0,0.4))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
