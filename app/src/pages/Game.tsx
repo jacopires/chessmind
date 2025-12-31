@@ -551,30 +551,24 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Elite physics */}
+                                {/* Draggable piece - Zero oscillation */}
                                 <motion.div
                                     drag={canDrag}
                                     dragConstraints={boardRef}
                                     dragElastic={0}
                                     dragMomentum={false}
-                                    dragSnapToOrigin={false}
-                                    animate={{
-                                        x: 0,
-                                        y: 0,
-                                        rotate: 0
-                                    }}
-                                    transition={{
-                                        type: 'spring',
-                                        stiffness: 400,
-                                        damping: 40,
-                                        mass: 0.8
+                                    dragSnapToOrigin={true}
+                                    dragTransition={{
+                                        power: 0,
+                                        timeConstant: 200,
+                                        modifyTarget: undefined
                                     }}
                                     whileDrag={{
-                                        scale: 1.1,
-                                        rotate: 1,
+                                        scale: 1.08,
+                                        rotate: 0.5,
                                         zIndex: 50,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 12px 12px rgba(0,0,0,0.5))'
+                                        filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.5))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
