@@ -554,29 +554,15 @@ export default function Game() {
 
                                     {/* Draggable piece */}
                                     <motion.div
-                                        layoutId={isDragging ? undefined : piece.key}
-                                        initial={false}
-                                        animate={isDragging ? {} : {
-                                            x: 0,
-                                            y: 0,
-                                            scale: 1
-                                        }}
-                                        transition={{
-                                            type: 'spring',
-                                            stiffness: 500,
-                                            damping: 30,
-                                            mass: 0.5
-                                        }}
+                                        key={piece.key}
                                         drag={canDrag}
                                         dragConstraints={boardRef}
                                         dragElastic={0}
                                         dragMomentum={false}
                                         whileDrag={{
-                                            scale: 1.15,
-                                            rotate: 2,
+                                            scale: 1.1,
                                             zIndex: 9999,
-                                            cursor: 'grabbing',
-                                            filter: 'drop-shadow(0 20px 20px rgba(0,0,0,0.5))'
+                                            cursor: 'grabbing'
                                         }}
                                         onDragStart={() => {
                                             setDraggedPiece(piece)
@@ -647,11 +633,7 @@ export default function Game() {
                                             height: '12.5%',
                                             zIndex: isDragging ? 9999 : 10,
                                             cursor: canDrag ? 'grab' : 'default',
-                                            touchAction: 'none',
-                                            pointerEvents: 'auto',
-                                            // @ts-ignore
-                                            WebkitUserDrag: 'none',
-                                            userSelect: 'none'
+                                            touchAction: 'none'
                                         }}
                                     >
                                         <ChessPiece type={piece.type} color={piece.color} />
