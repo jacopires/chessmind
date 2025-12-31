@@ -56,12 +56,17 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
     handleMove
 }) => {
     const controls = useAnimation()
-    const isClickMove = lastMoveType.current === 'click'
+    const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false)
+
+    // CRITICAL: Disable layout if EITHER:
+    // 1. Last move was a drag (lastMoveType.current === 'drag')
+    // 2. Currently dragging (isCurrentlyDragging === true)
+    const shouldEnableLayout = lastMoveType.current === 'click' && !isCurrentlyDragging
 
     return (
         <motion.div
             layoutId={piece.key}
-            layout={isClickMove} // Enable layout animation ONLY for clicks
+            layout={shouldEnableLayout} // Dynamic: responds to drag state in real-time
             animate={controls}
             initial={false}
             drag={canDrag}
@@ -71,7 +76,7 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
             dragSnapToOrigin={false} // Manual control for snap
 
             // PHYSICS ENGINE
-            transition={isClickMove
+            transition={shouldEnableLayout
                 ? { type: 'spring', stiffness: 300, damping: 30 } // Liquid Slide
                 : {
                     layout: { duration: 0 }, // Magnetic Snap (Position)
@@ -91,6 +96,7 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
             } : undefined}
 
             onDragStart={() => {
+                setIsCurrentlyDragging(true) // INSTANT layout disable
                 setWasDragged(true)
                 setDraggedPiece(piece)
                 setSelectedSquare(piece.square)
@@ -129,6 +135,7 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
 
                                 // CRITICAL: Reset drag offset instantly to prevent drift
                                 controls.set({ x: 0, y: 0 })
+                                setIsCurrentlyDragging(false) // Re-enable layout for next click
 
                                 requestAnimationFrame(() => setWasDragged(false))
                                 return
@@ -139,6 +146,7 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
 
                 // INVALID MOVE: Spring Back
                 setDraggedPiece(null)
+                setIsCurrentlyDragging(false) // Re-enable layout
                 controls.start({
                     x: 0, y: 0,
                     transition: { type: "spring", stiffness: 800, damping: 40 }
