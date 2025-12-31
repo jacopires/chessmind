@@ -551,8 +551,10 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Super-damped */}
+                                {/* Draggable piece - Liquid motion */}
                                 <motion.div
+                                    layoutId={piece.key}
+                                    layout
                                     drag={canDrag}
                                     dragConstraints={boardRef}
                                     dragElastic={0}
@@ -562,10 +564,18 @@ export default function Game() {
                                         y: 0
                                     }}
                                     transition={{
-                                        type: 'spring',
-                                        stiffness: 800,
-                                        damping: 60,
-                                        mass: 0.5
+                                        layout: {
+                                            type: 'spring',
+                                            stiffness: 300,
+                                            damping: 30,
+                                            mass: 0.8
+                                        },
+                                        default: {
+                                            type: 'spring',
+                                            stiffness: 800,
+                                            damping: 60,
+                                            mass: 0.5
+                                        }
                                     }}
                                     whileDrag={{
                                         scale: 1.1,
@@ -573,6 +583,10 @@ export default function Game() {
                                         cursor: 'grabbing',
                                         filter: 'drop-shadow(0 25px 20px rgba(0,0,0,0.4))'
                                     }}
+                                    whileHover={!isDragging ? {
+                                        scale: 1.05,
+                                        filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.3))'
+                                    } : undefined}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
