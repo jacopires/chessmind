@@ -419,7 +419,7 @@ export default function Game() {
         const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
 
         return (
-            <div ref={boardRef} className="relative aspect-square w-full max-w-2xl mx-auto">
+            <div ref={boardRef} className="relative aspect-square w-full max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
                 {/* Board Grid (empty cells) */}
                 <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
 
@@ -732,14 +732,14 @@ export default function Game() {
     }
 
     return (
-        <div className="flex-1 flex justify-center items-center p-6">
+        <div className="h-[calc(100vh-4rem)] flex justify-center items-center p-2 lg:p-4 overflow-hidden">
             <FloatingFeedback
                 message={currentFeedback}
                 isVisible={showFloatingFeedback}
                 onDismiss={() => setShowFloatingFeedback(false)}
             />
 
-            <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-4 items-center lg:items-start">
+            <div className="w-full max-w-5xl h-full flex flex-col lg:flex-row gap-2 lg:gap-4 items-center lg:items-center justify-center">
                 {/* Left: AI Orb + Advantage */}
                 {/* Left: AI Orb + Advantage */}
                 <div className="flex flex-row lg:flex-col items-center gap-6 lg:self-stretch lg:py-8 order-2 lg:order-first">
@@ -749,11 +749,11 @@ export default function Game() {
                 {/* Center: Board + Controls */}
                 <div className="flex-1 flex flex-col gap-4">
                     {/* Opponent Timer */}
-                    <div className="glass-strong rounded-xl p-4 flex justify-between items-center">
-                        <span className="text-lg font-bold">
+                    <div className="glass-strong rounded-lg p-2 lg:p-3 flex justify-between items-center">
+                        <span className="text-sm lg:text-base font-bold">
                             {userColor === 'white' ? 'Aristóteles' : 'Você'}
                         </span>
-                        <span className="text-2xl font-mono">
+                        <span className="text-lg lg:text-xl font-mono">
                             {formatTime(userColor === 'white' ? blackTime : whiteTime)}
                         </span>
                     </div>
@@ -762,21 +762,21 @@ export default function Game() {
                     {renderBoard()}
 
                     {/* Player Timer */}
-                    <div className="glass-strong rounded-xl p-4 flex justify-between items-center">
-                        <span className="text-lg font-bold">
+                    <div className="glass-strong rounded-lg p-2 lg:p-3 flex justify-between items-center">
+                        <span className="text-sm lg:text-base font-bold">
                             {userColor === 'white' ? 'Você' : 'Aristóteles'}
                         </span>
-                        <span className="text-2xl font-mono">
+                        <span className="text-lg lg:text-xl font-mono">
                             {formatTime(userColor === 'white' ? whiteTime : blackTime)}
                         </span>
                     </div>
                 </div>
 
-                {/* Right: Game Info */}
-                <div className="w-64 space-y-4">
-                    <div className="glass-strong rounded-xl p-4">
-                        <h3 className="text-sm font-bold opacity-60 mb-2">ESTATÍSTICAS</h3>
-                        <div className="space-y-2 text-sm">
+                {/* Right: Game Info - Hidden on mobile */}
+                <div className="hidden lg:block w-48 xl:w-56 space-y-2">
+                    <div className="glass-strong rounded-lg p-3">
+                        <h3 className="text-xs font-bold opacity-60 mb-2">ESTATÍSTICAS</h3>
+                        <div className="space-y-1 text-xs">
                             <div className="flex justify-between">
                                 <span>Melhor</span>
                                 <span className="text-green-400">{moveQualityCounts.best}</span>
