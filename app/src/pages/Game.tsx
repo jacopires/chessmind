@@ -66,7 +66,6 @@ export default function Game() {
     const [preMoveEval, setPreMoveEval] = useState<number | null>(null)
     const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
     const [legalMoves, setLegalMoves] = useState<Square[]>([])
-    const [disableLayout, setDisableLayout] = useState(false)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_wasDraggedInternal, setWasDragged] = useState(false)
     // Track the type of the last move (click or drag) without causing re-renders
@@ -549,7 +548,7 @@ export default function Game() {
                                 <motion.div
                                     key={piece.key}
                                     layoutId={piece.key}
-                                    layout={!disableLayout && !isDragging}
+                                    layout={lastMoveType.current === 'click'}
                                     initial={false}
                                     drag={canDrag}
                                     dragConstraints={boardRef}
@@ -577,7 +576,6 @@ export default function Game() {
                                     } : undefined}
                                     onDragStart={() => {
                                         setWasDragged(true)
-                                        setDisableLayout(true)
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
                                         const moves = game.moves({ square: piece.square, verbose: true })
@@ -613,10 +611,9 @@ export default function Game() {
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
                                                         setDraggedPiece(null)
-                                                        // Re‑enable layout after 2 frames (prevents any animation)
+                                                        // Re-enable layout after 2 frames (prevents any animation)
                                                         requestAnimationFrame(() => {
                                                             requestAnimationFrame(() => {
-                                                                setDisableLayout(false)
                                                                 setWasDragged(false)
                                                             })
                                                         })
@@ -630,7 +627,6 @@ export default function Game() {
                                         setDraggedPiece(null)
                                         requestAnimationFrame(() => {
                                             requestAnimationFrame(() => {
-                                                setDisableLayout(false)
                                                 setWasDragged(false)
                                             })
                                         })
@@ -670,7 +666,8 @@ export default function Game() {
                                         zIndex: isDragging ? 50 : 10,
                                         cursor: canDrag ? 'grab' : 'default',
                                         touchAction: 'none',
-                                        WebkitTapHighlightColor: 'transparent'
+                                        WebkitTapHighlightColor: 'transparent',
+                                        transition: 'none' // Force disable CSS transitions
                                     }}
                                 >
                                     <ChessPiece type={piece.type} color={piece.color} />
