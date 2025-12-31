@@ -551,18 +551,28 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece with magnetic snap */}
+                                {/* Draggable piece - Chess.com style */}
                                 <motion.div
                                     drag={canDrag}
                                     dragConstraints={boardRef}
-                                    dragElastic={0}
+                                    dragElastic={0.1}
                                     dragMomentum={false}
-                                    dragSnapToOrigin={true}
+                                    dragSnapToOrigin={false}
+                                    animate={{
+                                        x: 0,
+                                        y: 0
+                                    }}
+                                    transition={{
+                                        type: 'spring',
+                                        stiffness: 400,
+                                        damping: 25,
+                                        mass: 0.5
+                                    }}
                                     whileDrag={{
-                                        scale: 1.2,
+                                        scale: 1.15,
                                         zIndex: 50,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 25px 15px rgba(0,0,0,0.5))'
+                                        filter: 'drop-shadow(0 20px 20px rgba(0,0,0,0.4))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
@@ -593,15 +603,18 @@ export default function Game() {
                                                     const isLegal = moves.some(m => m.to === targetSquare)
 
                                                     if (isLegal) {
-                                                        // Valid move - update state (piece will render at new position)
+                                                        // Valid move - immediate snap (state update renders at new position)
                                                         handleMove({ from: piece.square, to: targetSquare })
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
+                                                        setDraggedPiece(null)
+                                                        return // Exit early - no spring back animation
                                                     }
                                                 }
                                             }
                                         }
 
+                                        // Invalid move - spring back via animate={{ x: 0, y: 0 }}
                                         setDraggedPiece(null)
                                     }}
                                     onClick={(e) => {
@@ -628,7 +641,7 @@ export default function Game() {
                                             setLegalMoves(moves.map(m => m.to))
                                         }
                                     }}
-                                    className="absolute pointer-events-auto"
+                                    className="absolute pointer-events-auto select-none"
                                     style={{
                                         left: position.left,
                                         top: position.top,
@@ -636,7 +649,8 @@ export default function Game() {
                                         height: '12.5%',
                                         zIndex: isDragging ? 50 : 10,
                                         cursor: canDrag ? 'grab' : 'default',
-                                        touchAction: 'none'
+                                        touchAction: 'none',
+                                        WebkitTapHighlightColor: 'transparent'
                                     }}
                                 >
                                     <ChessPiece type={piece.type} color={piece.color} />
