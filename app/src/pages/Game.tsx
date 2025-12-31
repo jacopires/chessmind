@@ -419,7 +419,7 @@ export default function Game() {
         const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
 
         return (
-            <div ref={boardRef} className="relative aspect-square w-full max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
+            <div ref={boardRef} className="relative aspect-square w-full max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto">
                 {/* Board Grid (empty cells) */}
                 <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
 
@@ -746,14 +746,14 @@ export default function Game() {
                     <AIOrb isActive={aiOrbActive} />
                 </div>
 
-                {/* Center: Board + Controls */}
-                <div className="flex-1 flex flex-col gap-4">
-                    {/* Opponent Timer */}
-                    <div className="glass-strong rounded-lg p-2 lg:p-3 flex justify-between items-center">
-                        <span className="text-sm lg:text-base font-bold">
+                {/* Center: Board with integrated timers */}
+                <div className="flex flex-col">
+                    {/* Opponent Timer - Above board */}
+                    <div className="flex justify-between items-center px-1 py-1 mb-1">
+                        <span className="text-sm font-semibold text-white/80">
                             {userColor === 'white' ? 'Aristóteles' : 'Você'}
                         </span>
-                        <span className="text-lg lg:text-xl font-mono">
+                        <span className="text-lg font-mono font-bold bg-slate-800/80 px-3 py-1 rounded">
                             {formatTime(userColor === 'white' ? blackTime : whiteTime)}
                         </span>
                     </div>
@@ -761,12 +761,12 @@ export default function Game() {
                     {/* Board */}
                     {renderBoard()}
 
-                    {/* Player Timer */}
-                    <div className="glass-strong rounded-lg p-2 lg:p-3 flex justify-between items-center">
-                        <span className="text-sm lg:text-base font-bold">
+                    {/* Player Timer - Below board */}
+                    <div className="flex justify-between items-center px-1 py-1 mt-1">
+                        <span className="text-sm font-semibold text-white/80">
                             {userColor === 'white' ? 'Você' : 'Aristóteles'}
                         </span>
-                        <span className="text-lg lg:text-xl font-mono">
+                        <span className="text-lg font-mono font-bold bg-purple-600/80 px-3 py-1 rounded">
                             {formatTime(userColor === 'white' ? whiteTime : blackTime)}
                         </span>
                     </div>
