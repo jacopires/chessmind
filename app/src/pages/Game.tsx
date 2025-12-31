@@ -535,23 +535,6 @@ export default function Game() {
 
                         return (
                             <div key={piece.key}>
-                                {/* Ghost piece at origin - SEPARATE from motion.div */}
-                                {isDragging && (
-                                    <div
-                                        className="absolute pointer-events-none"
-                                        style={{
-                                            left: position.left,
-                                            top: position.top,
-                                            width: '12.5%',
-                                            height: '12.5%',
-                                            opacity: 0.35,
-                                            zIndex: 5
-                                        }}
-                                    >
-                                        <ChessPiece type={piece.type} color={piece.color} />
-                                    </div>
-                                )}
-
 
                                 {/* Draggable piece - ZERO tremor */}
                                 <motion.div
