@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { type Square, type Move } from 'chess.js'
 import { motion, useAnimation } from 'framer-motion'
@@ -19,6 +19,110 @@ interface FloatingPiece {
     color: 'w' | 'b'
     key: string
 }
+
+// Memoized Board Background to prevent re-renders during drag
+interface BoardBackgroundProps {
+    userColor: 'white' | 'black'
+    selectedSquare: Square | null
+    legalMoves: Square[]
+    game: any
+    isActive: boolean
+    handleMove: (m: { from: Square, to: Square }) => Promise<boolean>
+    setSelectedSquare: (s: Square | null) => void
+    setLegalMoves: (m: Square[]) => void
+}
+
+const BoardBackground = React.memo<BoardBackgroundProps>(({
+    userColor,
+    selectedSquare,
+    legalMoves,
+    game,
+    isActive,
+    handleMove,
+    setSelectedSquare,
+    setLegalMoves
+}) => {
+    const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
+
+    return (
+        <>
+            {/* Board Grid (empty cells) */}
+            <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
+                {ranks.map((rank, rankIdx) =>
+                    files.map((file, fileIdx) => {
+                        const square = `${file}${rank}` as Square
+                        const isLight = (rankIdx + fileIdx) % 2 === 0
+                        const isSelected = selectedSquare === square
+
+                        return (
+                            <div
+                                key={square}
+                                onClick={() => {
+                                    if (!isActive) return
+                                    const piece = game.get(square)
+
+                                    if (selectedSquare) {
+                                        const moves = game.moves({ square: selectedSquare, verbose: true })
+                                        const isLegal = moves.some((m: any) => m.to === square)
+
+                                        if (isLegal) {
+                                            handleMove({ from: selectedSquare, to: square })
+                                            setLegalMoves([])
+                                            setSelectedSquare(null)
+                                        } else {
+                                            setSelectedSquare(null)
+                                            setLegalMoves([])
+                                        }
+                                    } else if (piece && piece.color === game.turn()) {
+                                        setSelectedSquare(square)
+                                        const moves = game.moves({ square, verbose: true })
+                                        setLegalMoves(moves.map((m: any) => m.to))
+                                    }
+                                }}
+                                className={`
+                                    ${isLight ? 'bg-slate-300' : 'bg-slate-600'}
+                                    ${isSelected ? 'ring-4 ring-purple-500 ring-inset' : ''}
+                                    cursor-pointer
+                                `}
+                            />
+                        )
+                    })
+                )}
+
+                {/* Legal move indicators (circles) */}
+                {legalMoves.map((moveSquare) => {
+                    const isCapture = game.get(moveSquare) !== null
+                    const rankIdx = 7 - (moveSquare.charCodeAt(1) - '1'.charCodeAt(0))
+                    const fileIdx = moveSquare.charCodeAt(0) - 'a'.charCodeAt(0)
+                    const orientation = userColor === 'black' ? 'b' : 'w'
+                    const x = orientation === 'w' ? fileIdx : 7 - fileIdx
+                    const y = orientation === 'w' ? rankIdx : 7 - rankIdx
+                    const isLightSquare = (x + y) % 2 === 0
+
+                    return (
+                        <div
+                            key={`hint-${moveSquare}`}
+                            className="absolute pointer-events-none flex items-center justify-center z-[5]"
+                            style={{
+                                left: `${x * 12.5}%`,
+                                top: `${y * 12.5}%`,
+                                width: '12.5%',
+                                height: '12.5%'
+                            }}
+                        >
+                            {isCapture ? (
+                                <div className={`w-full h-full border-[6px] ${isLightSquare ? 'border-black/20' : 'border-white/20'} rounded-full`} />
+                            ) : (
+                                <div className={`w-[30%] h-[30%] ${isLightSquare ? 'bg-black/20' : 'bg-white/20'} rounded-full`} />
+                            )}
+                        </div>
+                    )
+                })}
+            </div>
+        </>
+    )
+})
 
 interface DraggablePieceProps {
     piece: FloatingPiece
@@ -66,7 +170,7 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
     return (
         <motion.div
             layoutId={piece.key}
-            layout={shouldEnableLayout} // Dynamic: responds to drag state in real-time
+            layout={shouldEnableLayout ? "position" : false} // Optimize: only animate position changes
             animate={controls}
             initial={false}
             drag={canDrag}
@@ -125,17 +229,17 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
                             const isLegal = moves.some((m: any) => m.to === targetSquare)
 
                             if (isLegal) {
-                                // VALID MOVE: Instant Snap
-                                handleMove({ from: piece.square, to: targetSquare })
+                                // CRITICAL: Sync state BEFORE handleMove to prevent animation race
                                 lastMoveType.current = 'drag'
+                                controls.set({ x: 0, y: 0 })
+                                setIsCurrentlyDragging(false)
 
                                 setLegalMoves([])
                                 setSelectedSquare(null)
                                 setDraggedPiece(null)
 
-                                // CRITICAL: Reset drag offset instantly to prevent drift
-                                controls.set({ x: 0, y: 0 })
-                                setIsCurrentlyDragging(false) // Re-enable layout for next click
+                                // Execute move AFTER state sync
+                                handleMove({ from: piece.square, to: targetSquare })
 
                                 requestAnimationFrame(() => setWasDragged(false))
                                 return
@@ -600,85 +704,16 @@ export default function Game() {
 
         return (
             <div ref={boardRef} className="relative w-full h-full">
-                {/* Board Grid (empty cells) */}
-                <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
-
-                    {ranks.map((rank, rankIdx) =>
-                        files.map((file, fileIdx) => {
-                            const square = `${file}${rank}` as Square
-                            const isLight = (rankIdx + fileIdx) % 2 === 0
-                            const isSelected = selectedSquare === square
-
-                            return (
-                                <div
-                                    key={square}
-                                    onClick={() => {
-                                        if (!isActive) return
-                                        const piece = game.get(square)
-
-                                        if (selectedSquare) {
-                                            // Validate move is legal
-                                            const moves = game.moves({ square: selectedSquare, verbose: true })
-                                            const isLegal = moves.some(m => m.to === square)
-
-                                            if (isLegal) {
-                                                handleMove({ from: selectedSquare, to: square })
-                                                setLegalMoves([])
-                                                setSelectedSquare(null)
-                                            } else {
-                                                setSelectedSquare(null)
-                                                setLegalMoves([])
-                                            }
-                                        } else if (piece && piece.color === game.turn()) {
-                                            setSelectedSquare(square)
-                                            const moves = game.moves({ square, verbose: true })
-                                            setLegalMoves(moves.map(m => m.to))
-                                        }
-                                    }}
-                                    className={`
-                                        ${isLight ? 'bg-slate-300' : 'bg-slate-600'}
-                                        ${isSelected ? 'ring-4 ring-purple-500 ring-inset' : ''}
-                                        cursor-pointer transition-all
-                                    `}
-                                />
-                            )
-                        })
-                    )}
-
-                    {/* Legal move indicators (circles) - Chess.com style */}
-                    {legalMoves.map((moveSquare) => {
-                        const isCapture = game.get(moveSquare) !== null
-                        const rankIdx = 7 - (moveSquare.charCodeAt(1) - '1'.charCodeAt(0))
-                        const fileIdx = moveSquare.charCodeAt(0) - 'a'.charCodeAt(0)
-
-                        // Fix for orientation
-                        const orientation = userColor === 'black' ? 'b' : 'w'
-                        const x = orientation === 'w' ? fileIdx : 7 - fileIdx
-                        const y = orientation === 'w' ? rankIdx : 7 - rankIdx
-
-                        // Determine if square is light or dark for dot contrast
-                        const isLightSquare = (x + y) % 2 === 0
-
-                        return (
-                            <div
-                                key={`hint-${moveSquare}`}
-                                className="absolute pointer-events-none flex items-center justify-center z-[5]"
-                                style={{
-                                    left: `${x * 12.5}%`,
-                                    top: `${y * 12.5}%`,
-                                    width: '12.5%',
-                                    height: '12.5%'
-                                }}
-                            >
-                                {isCapture ? (
-                                    <div className={`w-full h-full border-[6px] ${isLightSquare ? 'border-black/20' : 'border-white/20'} rounded-full`} />
-                                ) : (
-                                    <div className={`w-[30%] h-[30%] ${isLightSquare ? 'bg-black/20' : 'bg-white/20'} rounded-full`} />
-                                )}
-                            </div>
-                        )
-                    })}
-                </div>
+                <BoardBackground
+                    userColor={userColor}
+                    selectedSquare={selectedSquare}
+                    legalMoves={legalMoves}
+                    game={game}
+                    isActive={isActive}
+                    handleMove={handleMove}
+                    setSelectedSquare={setSelectedSquare}
+                    setLegalMoves={setLegalMoves}
+                />
 
                 {/* Board Coordinates - Subtle opacity */}
                 <div className="absolute top-0 right-0 bottom-0 pointer-events-none opacity-30">
@@ -736,46 +771,48 @@ export default function Game() {
                 </div>
 
                 {/* AI Highlights - Soft Purple Flash */}
-                {suggestedMove && (
-                    <>
-                        {[suggestedMove.from, suggestedMove.to].map((square, idx) => {
-                            const orientation = userColor === 'black' ? 'b' : 'w'
-                            const position = getSquarePosition(square, orientation)
+                {
+                    suggestedMove && (
+                        <>
+                            {[suggestedMove.from, suggestedMove.to].map((square, idx) => {
+                                const orientation = userColor === 'black' ? 'b' : 'w'
+                                const position = getSquarePosition(square, orientation)
 
-                            return (
-                                <motion.div
-                                    key={`highlight-${square}`}
-                                    className="absolute pointer-events-none rounded-sm"
-                                    style={{
-                                        left: position.left,
-                                        top: position.top,
-                                        width: '12.5%',
-                                        height: '12.5%'
-                                    }}
-                                    initial={{ backgroundColor: 'rgba(168, 85, 247, 0)' }}
-                                    animate={{
-                                        backgroundColor: [
-                                            'rgba(168, 85, 247, 0)',
-                                            'rgba(168, 85, 247, 0.4)',
-                                            'rgba(168, 85, 247, 0)'
-                                        ]
-                                    }}
-                                    transition={{
-                                        repeat: Infinity,
-                                        duration: 2,
-                                        ease: 'easeInOut',
-                                        delay: idx * 0.5
-                                    }}
-                                />
-                            )
-                        })}
-                    </>
-                )}
+                                return (
+                                    <motion.div
+                                        key={`highlight-${square}`}
+                                        className="absolute pointer-events-none rounded-sm"
+                                        style={{
+                                            left: position.left,
+                                            top: position.top,
+                                            width: '12.5%',
+                                            height: '12.5%'
+                                        }}
+                                        initial={{ backgroundColor: 'rgba(168, 85, 247, 0)' }}
+                                        animate={{
+                                            backgroundColor: [
+                                                'rgba(168, 85, 247, 0)',
+                                                'rgba(168, 85, 247, 0.4)',
+                                                'rgba(168, 85, 247, 0)'
+                                            ]
+                                        }}
+                                        transition={{
+                                            repeat: Infinity,
+                                            duration: 2,
+                                            ease: 'easeInOut',
+                                            delay: idx * 0.5
+                                        }}
+                                    />
+                                )
+                            })}
+                        </>
+                    )
+                }
                 {/* Advantage Bar - Absolute Positioned (Left) */}
                 <div className="absolute top-0 bottom-0 -left-6 w-2 hidden lg:block z-0">
                     <AdvantageBar evaluation={evaluation?.score || 0} />
                 </div>
-            </div>
+            </div >
         )
     }
 
