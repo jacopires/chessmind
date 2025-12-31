@@ -69,6 +69,8 @@ export default function Game() {
     const [disableLayout, setDisableLayout] = useState(false)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_wasDraggedInternal, setWasDragged] = useState(false)
+    // Track the type of the last move (click or drag) without causing re-renders
+    const lastMoveType = useRef<'click' | 'drag'>('click')
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
@@ -259,7 +261,12 @@ export default function Game() {
                                 const moveMap = movedMappings.find(m => m.to === square)
                                 if (moveMap) {
                                     // Try to claim the piece that was at 'from'
-                                    key = claimPiece(moveMap.from, piece.type, piece.color)
+                                    // CRITICAL: If moved via DRAG, force NEW KEY to kill animation (instant snap)
+                                    if (lastMoveType.current === 'drag') {
+                                        key = null // Force new ID generation below
+                                    } else {
+                                        key = claimPiece(moveMap.from, piece.type, piece.color)
+                                    }
                                 }
 
                                 // If not a mover (or claim failed), try to match Stationary piece (same square)
@@ -553,14 +560,11 @@ export default function Game() {
                                         power: 0,
                                         timeConstant: 150
                                     }}
-                                    transition={{
-                                        layout: {
-                                            type: 'spring',
-                                            stiffness: 1500,
-                                            damping: 80,
-                                            mass: 0.5
-                                        }
-                                    }}
+                                    // Conditional transition: smooth slide for click‑moves, instant for drag‑moves
+                                    transition={lastMoveType.current === 'click'
+                                        ? { type: 'spring', stiffness: 300, damping: 30 }
+                                        : { duration: 0 }}
+
                                     whileDrag={{
                                         scale: 1.15,
                                         zIndex: 50,
@@ -604,10 +608,12 @@ export default function Game() {
                                                     if (isLegal) {
                                                         // DRAG MOVE - instant lock, keep layout disabled
                                                         handleMove({ from: piece.square, to: targetSquare })
+                                                        // Mark this as a drag‑move so we suppress layout animation
+                                                        lastMoveType.current = 'drag'
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
                                                         setDraggedPiece(null)
-                                                        // Re-enable layout after 2 frames (prevents any animation)
+                                                        // Re‑enable layout after 2 frames (prevents any animation)
                                                         requestAnimationFrame(() => {
                                                             requestAnimationFrame(() => {
                                                                 setDisableLayout(false)
@@ -640,6 +646,8 @@ export default function Game() {
 
                                             if (isLegal) {
                                                 handleMove({ from: selectedSquare, to: piece.square })
+                                                // Mark this as a click‑move so the piece slides smoothly
+                                                lastMoveType.current = 'click'
                                                 setLegalMoves([])
                                                 setSelectedSquare(null)
                                                 return
