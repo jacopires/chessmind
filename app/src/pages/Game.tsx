@@ -552,29 +552,27 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Zero tremor */}
+
+                                {/* Draggable piece - ZERO tremor */}
                                 <motion.div
+                                    key={piece.key}
                                     layoutId={piece.key}
                                     layout={!disableLayout}
+                                    initial={false}
                                     drag={canDrag}
                                     dragConstraints={boardRef}
-                                    dragElastic={0.1}
+                                    dragElastic={0}
                                     dragMomentum={false}
-                                    animate={{
-                                        x: 0,
-                                        y: 0
+                                    dragSnapToOrigin={true}
+                                    dragTransition={{
+                                        power: 0,
+                                        timeConstant: 150
                                     }}
                                     transition={{
                                         layout: {
                                             type: 'spring',
-                                            stiffness: 300,
-                                            damping: 30,
-                                            mass: 0.8
-                                        },
-                                        default: {
-                                            type: 'spring',
-                                            stiffness: 800,
-                                            damping: 60,
+                                            stiffness: 400,
+                                            damping: 40,
                                             mass: 0.5
                                         }
                                     }}
