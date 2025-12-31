@@ -571,8 +571,8 @@ export default function Game() {
                                     transition={{
                                         layout: {
                                             type: 'spring',
-                                            stiffness: 400,
-                                            damping: 40,
+                                            stiffness: 1500,
+                                            damping: 80,
                                             mass: 0.5
                                         }
                                     }}
