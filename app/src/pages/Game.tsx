@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { type Square, type Move } from 'chess.js'
-import { motion } from 'framer-motion'
+import { motion, useAnimation } from 'framer-motion'
 import ChessPiece from '../components/ChessPiece'
 import { AIOrb } from '../components/AIOrb'
 import { FloatingFeedback } from '../components/FloatingFeedback'
@@ -18,6 +18,173 @@ interface FloatingPiece {
     type: 'p' | 'n' | 'b' | 'r' | 'q' | 'k'
     color: 'w' | 'b'
     key: string
+}
+
+interface DraggablePieceProps {
+    piece: FloatingPiece
+    canDrag: boolean
+    isDragging: boolean
+    position: { left: string, top: string }
+    boardRef: React.RefObject<HTMLDivElement | null>
+    orientation: 'w' | 'b'
+    game: any
+    isActive: boolean
+    lastMoveType: React.MutableRefObject<'click' | 'drag'>
+    selectedSquare: Square | null
+    setWasDragged: (v: boolean) => void
+    setDraggedPiece: (p: FloatingPiece | null) => void
+    setSelectedSquare: (s: Square | null) => void
+    setLegalMoves: (m: Square[]) => void
+    handleMove: (m: { from: Square, to: Square, promotion?: string }) => void
+}
+
+const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
+    piece,
+    canDrag,
+    isDragging,
+    position,
+    boardRef,
+    orientation,
+    game,
+    isActive,
+    lastMoveType,
+    selectedSquare,
+    setWasDragged,
+    setDraggedPiece,
+    setSelectedSquare,
+    setLegalMoves,
+    handleMove
+}) => {
+    const controls = useAnimation()
+    const isClickMove = lastMoveType.current === 'click'
+
+    return (
+        <motion.div
+            layoutId={piece.key}
+            layout={isClickMove} // Enable layout animation ONLY for clicks
+            animate={controls}
+            initial={false}
+            drag={canDrag}
+            dragConstraints={boardRef}
+            dragElastic={0}
+            dragMomentum={false}
+            dragSnapToOrigin={false} // Manual control for snap
+
+            // PHYSICS ENGINE
+            transition={isClickMove
+                ? { type: 'spring', stiffness: 300, damping: 30 } // Liquid Slide
+                : {
+                    layout: { duration: 0 }, // Magnetic Snap (Position)
+                    default: { duration: 0.1 } // Soft Landing (Shadow/Scale)
+                }
+            }
+
+            whileDrag={{
+                scale: 1.15,
+                zIndex: 100,
+                cursor: 'grabbing',
+                filter: 'drop-shadow(0 25px 20px rgba(0,0,0,0.4))'
+            }}
+            whileHover={!isDragging ? {
+                scale: 1.05,
+                filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.3))'
+            } : undefined}
+
+            onDragStart={() => {
+                setWasDragged(true)
+                setDraggedPiece(piece)
+                setSelectedSquare(piece.square)
+                const moves = game.moves({ square: piece.square, verbose: true })
+                setLegalMoves(moves.map((m: any) => m.to))
+            }}
+
+            onDragEnd={(_, info) => {
+                const boardRect = boardRef.current?.getBoundingClientRect()
+
+                if (boardRect) {
+                    const x = info.point.x
+                    const y = info.point.y
+                    const relX = x - boardRect.left
+                    const relY = y - boardRect.top
+                    const colIdx = Math.floor((relX / boardRect.width) * 8)
+                    const rowIdx = Math.floor((relY / boardRect.height) * 8)
+
+                    if (colIdx >= 0 && colIdx < 8 && rowIdx >= 0 && rowIdx < 8) {
+                        const file = orientation === 'w' ? colIdx : 7 - colIdx
+                        const rank = orientation === 'w' ? 7 - rowIdx : rowIdx
+                        const targetSquare = `${String.fromCharCode(97 + file)}${rank + 1}` as Square
+
+                        if (targetSquare !== piece.square) {
+                            const moves = game.moves({ square: piece.square, verbose: true })
+                            const isLegal = moves.some((m: any) => m.to === targetSquare)
+
+                            if (isLegal) {
+                                // VALID MOVE: Instant Snap
+                                handleMove({ from: piece.square, to: targetSquare })
+                                lastMoveType.current = 'drag'
+
+                                setLegalMoves([])
+                                setSelectedSquare(null)
+                                setDraggedPiece(null)
+
+                                // CRITICAL: Reset drag offset instantly to prevent drift
+                                controls.set({ x: 0, y: 0 })
+
+                                requestAnimationFrame(() => setWasDragged(false))
+                                return
+                            }
+                        }
+                    }
+                }
+
+                // INVALID MOVE: Spring Back
+                setDraggedPiece(null)
+                controls.start({
+                    x: 0, y: 0,
+                    transition: { type: "spring", stiffness: 800, damping: 40 }
+                })
+                requestAnimationFrame(() => setWasDragged(false))
+            }}
+
+            onClick={(e) => {
+                e.stopPropagation()
+                if (!isActive) return
+
+                if (selectedSquare && selectedSquare !== piece.square) {
+                    const moves = game.moves({ square: selectedSquare, verbose: true })
+                    const isLegal = moves.some((m: any) => m.to === piece.square)
+
+                    if (isLegal) {
+                        handleMove({ from: selectedSquare, to: piece.square })
+                        lastMoveType.current = 'click'
+                        setLegalMoves([])
+                        setSelectedSquare(null)
+                        return
+                    }
+                }
+
+                if (piece.color === game.turn() && canDrag) {
+                    setSelectedSquare(piece.square)
+                    const moves = game.moves({ square: piece.square, verbose: true })
+                    setLegalMoves(moves.map((m: any) => m.to))
+                }
+            }}
+            className="absolute pointer-events-auto select-none"
+            style={{
+                left: position.left,
+                top: position.top,
+                width: '12.5%',
+                height: '12.5%',
+                zIndex: isDragging ? 100 : 10,
+                cursor: canDrag ? 'grab' : 'default',
+                touchAction: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'none'
+            }}
+        >
+            <ChessPiece type={piece.type} color={piece.color} />
+        </motion.div>
+    )
 }
 
 export default function Game() {
@@ -260,12 +427,8 @@ export default function Game() {
                                 const moveMap = movedMappings.find(m => m.to === square)
                                 if (moveMap) {
                                     // Try to claim the piece that was at 'from'
-                                    // CRITICAL: If moved via DRAG, force NEW KEY to kill animation (instant snap)
-                                    if (lastMoveType.current === 'drag') {
-                                        key = null // Force new ID generation below
-                                    } else {
-                                        key = claimPiece(moveMap.from, piece.type, piece.color)
-                                    }
+                                    // Try to claim the piece that was at 'from'
+                                    key = claimPiece(moveMap.from, piece.type, piece.color)
                                 }
 
                                 // If not a mover (or claim failed), try to match Stationary piece (same square)
@@ -542,137 +705,24 @@ export default function Game() {
                                 (userColor === 'black' && piece.color === 'b'))
 
                         return (
-                            <div key={piece.key}>
-
-                                {/* Draggable piece - ZERO tremor */}
-                                <motion.div
-                                    key={piece.key}
-                                    layoutId={piece.key}
-                                    layout={lastMoveType.current === 'click'}
-                                    initial={false}
-                                    drag={canDrag}
-                                    dragConstraints={boardRef}
-                                    dragElastic={0}
-                                    dragMomentum={false}
-                                    dragSnapToOrigin={true}
-                                    dragTransition={{
-                                        power: 0,
-                                        timeConstant: 150
-                                    }}
-                                    // Conditional transition: smooth slide for click‑moves, instant for drag‑moves
-                                    transition={lastMoveType.current === 'click'
-                                        ? { type: 'spring', stiffness: 300, damping: 30 }
-                                        : { duration: 0 }}
-
-                                    whileDrag={{
-                                        scale: 1.15,
-                                        zIndex: 50,
-                                        cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 25px 20px rgba(0,0,0,0.4))'
-                                    }}
-                                    whileHover={!isDragging ? {
-                                        scale: 1.05,
-                                        filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.3))'
-                                    } : undefined}
-                                    onDragStart={() => {
-                                        setWasDragged(true)
-                                        setDraggedPiece(piece)
-                                        setSelectedSquare(piece.square)
-                                        const moves = game.moves({ square: piece.square, verbose: true })
-                                        setLegalMoves(moves.map(m => m.to))
-                                    }}
-                                    onDragEnd={(_, info) => {
-                                        const boardRect = boardRef.current?.getBoundingClientRect()
-
-                                        if (boardRect) {
-                                            const x = info.point.x
-                                            const y = info.point.y
-
-                                            const relX = x - boardRect.left
-                                            const relY = y - boardRect.top
-
-                                            const colIdx = Math.floor((relX / boardRect.width) * 8)
-                                            const rowIdx = Math.floor((relY / boardRect.height) * 8)
-
-                                            if (colIdx >= 0 && colIdx < 8 && rowIdx >= 0 && rowIdx < 8) {
-                                                const file = orientation === 'w' ? colIdx : 7 - colIdx
-                                                const rank = orientation === 'w' ? 7 - rowIdx : rowIdx
-                                                const targetSquare = `${String.fromCharCode(97 + file)}${rank + 1}` as Square
-
-                                                if (targetSquare !== piece.square) {
-                                                    const moves = game.moves({ square: piece.square, verbose: true })
-                                                    const isLegal = moves.some(m => m.to === targetSquare)
-
-                                                    if (isLegal) {
-                                                        // DRAG MOVE - instant lock, keep layout disabled
-                                                        handleMove({ from: piece.square, to: targetSquare })
-                                                        // Mark this as a drag‑move so we suppress layout animation
-                                                        lastMoveType.current = 'drag'
-                                                        setLegalMoves([])
-                                                        setSelectedSquare(null)
-                                                        setDraggedPiece(null)
-                                                        // Re-enable layout after 2 frames (prevents any animation)
-                                                        requestAnimationFrame(() => {
-                                                            requestAnimationFrame(() => {
-                                                                setWasDragged(false)
-                                                            })
-                                                        })
-                                                        return
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        // Invalid move - spring back
-                                        setDraggedPiece(null)
-                                        requestAnimationFrame(() => {
-                                            requestAnimationFrame(() => {
-                                                setWasDragged(false)
-                                            })
-                                        })
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        if (!isActive) return
-
-                                        // Capture on enemy piece
-                                        if (selectedSquare && selectedSquare !== piece.square) {
-                                            const moves = game.moves({ square: selectedSquare, verbose: true })
-                                            const isLegal = moves.some(m => m.to === piece.square)
-
-                                            if (isLegal) {
-                                                handleMove({ from: selectedSquare, to: piece.square })
-                                                // Mark this as a click‑move so the piece slides smoothly
-                                                lastMoveType.current = 'click'
-                                                setLegalMoves([])
-                                                setSelectedSquare(null)
-                                                return
-                                            }
-                                        }
-
-                                        // Select own piece
-                                        if (piece.color === game.turn() && canDrag) {
-                                            setSelectedSquare(piece.square)
-                                            const moves = game.moves({ square: piece.square, verbose: true })
-                                            setLegalMoves(moves.map(m => m.to))
-                                        }
-                                    }}
-                                    className="absolute pointer-events-auto select-none"
-                                    style={{
-                                        left: position.left,
-                                        top: position.top,
-                                        width: '12.5%',
-                                        height: '12.5%',
-                                        zIndex: isDragging ? 50 : 10,
-                                        cursor: canDrag ? 'grab' : 'default',
-                                        touchAction: 'none',
-                                        WebkitTapHighlightColor: 'transparent',
-                                        transition: 'none' // Force disable CSS transitions
-                                    }}
-                                >
-                                    <ChessPiece type={piece.type} color={piece.color} />
-                                </motion.div>
-                            </div>
+                            <DraggableChessPiece
+                                key={piece.key}
+                                piece={piece}
+                                canDrag={canDrag}
+                                isDragging={isDragging}
+                                position={position}
+                                boardRef={boardRef}
+                                orientation={orientation}
+                                game={game}
+                                isActive={isActive}
+                                lastMoveType={lastMoveType}
+                                selectedSquare={selectedSquare}
+                                setWasDragged={setWasDragged}
+                                setDraggedPiece={setDraggedPiece}
+                                setSelectedSquare={setSelectedSquare}
+                                setLegalMoves={setLegalMoves}
+                                handleMove={handleMove}
+                            />
                         )
                     })}
                 </div>
