@@ -551,11 +551,11 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Chess.com style */}
+                                {/* Draggable piece - Magnetic precision */}
                                 <motion.div
                                     drag={canDrag}
                                     dragConstraints={boardRef}
-                                    dragElastic={0.1}
+                                    dragElastic={0}
                                     dragMomentum={false}
                                     dragSnapToOrigin={false}
                                     animate={{
@@ -564,15 +564,14 @@ export default function Game() {
                                     }}
                                     transition={{
                                         type: 'spring',
-                                        stiffness: 400,
-                                        damping: 25,
-                                        mass: 0.5
+                                        stiffness: 600,
+                                        damping: 45
                                     }}
                                     whileDrag={{
-                                        scale: 1.15,
+                                        scale: 1.1,
                                         zIndex: 50,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 20px 20px rgba(0,0,0,0.4))'
+                                        filter: 'drop-shadow(0 15px 15px rgba(0,0,0,0.5))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
