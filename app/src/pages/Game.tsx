@@ -162,15 +162,13 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
     const controls = useAnimation()
     const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false)
 
-    // CRITICAL: Disable layout if EITHER:
-    // 1. Last move was a drag (lastMoveType.current === 'drag')
-    // 2. Currently dragging (isCurrentlyDragging === true)
-    const shouldEnableLayout = lastMoveType.current === 'click' && !isCurrentlyDragging
+    // Determine move type for physics engine
+    const isClickMove = lastMoveType.current === 'click' && !isCurrentlyDragging
 
     return (
         <motion.div
             layoutId={piece.key}
-            layout={shouldEnableLayout ? "position" : false} // Optimize: only animate position changes
+            layout="position" // ALWAYS position-only animation
             animate={controls}
             initial={false}
             drag={canDrag}
@@ -179,14 +177,16 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
             dragMomentum={false}
             dragSnapToOrigin={false} // Manual control for snap
 
-            // PHYSICS ENGINE
-            transition={shouldEnableLayout
-                ? { type: 'spring', stiffness: 300, damping: 30 } // Liquid Slide
-                : {
-                    layout: { duration: 0 }, // Magnetic Snap (Position)
-                    default: { duration: 0.1 } // Soft Landing (Shadow/Scale)
-                }
-            }
+            // PHYSICS ENGINE - Layout duration controls the snap vs slide
+            transition={{
+                layout: {
+                    type: isClickMove ? 'spring' : 'tween',
+                    duration: isClickMove ? 0.3 : 0, // INSTANT for drag, smooth for click
+                    stiffness: 300,
+                    damping: 30
+                },
+                default: { duration: 0.1 } // Soft Landing (Shadow/Scale)
+            }}
 
             whileDrag={{
                 scale: 1.15,
