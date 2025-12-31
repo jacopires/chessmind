@@ -66,6 +66,7 @@ export default function Game() {
     const [preMoveEval, setPreMoveEval] = useState<number | null>(null)
     const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
     const [legalMoves, setLegalMoves] = useState<Square[]>([])
+    const [disableLayout, setDisableLayout] = useState(false)
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
@@ -551,13 +552,13 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Liquid motion */}
+                                {/* Draggable piece - Zero tremor */}
                                 <motion.div
                                     layoutId={piece.key}
-                                    layout
+                                    layout={!disableLayout}
                                     drag={canDrag}
                                     dragConstraints={boardRef}
-                                    dragElastic={0}
+                                    dragElastic={0.1}
                                     dragMomentum={false}
                                     animate={{
                                         x: 0,
@@ -616,11 +617,14 @@ export default function Game() {
                                                     const isLegal = moves.some(m => m.to === targetSquare)
 
                                                     if (isLegal) {
-                                                        // Valid move - immediate snap (state update renders at new position)
+                                                        // Valid move - instant lock (disable layout to prevent tremor)
+                                                        setDisableLayout(true)
                                                         handleMove({ from: piece.square, to: targetSquare })
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
                                                         setDraggedPiece(null)
+                                                        // Re-enable layout after one frame
+                                                        requestAnimationFrame(() => setDisableLayout(false))
                                                         return // Exit early - no spring back animation
                                                     }
                                                 }
