@@ -554,13 +554,12 @@ export default function Game() {
 
                                     {/* Draggable piece */}
                                     <motion.div
-                                        layoutId={piece.key}
+                                        layoutId={isDragging ? undefined : piece.key}
                                         initial={false}
-                                        animate={{
-                                            left: position.left,
-                                            top: position.top,
-                                            scale: 1,
-                                            zIndex: isDragging ? 9999 : 10
+                                        animate={isDragging ? {} : {
+                                            x: 0,
+                                            y: 0,
+                                            scale: 1
                                         }}
                                         transition={{
                                             type: 'spring',
@@ -572,7 +571,6 @@ export default function Game() {
                                         dragConstraints={boardRef}
                                         dragElastic={0}
                                         dragMomentum={false}
-                                        dragSnapToOrigin={true}
                                         whileDrag={{
                                             scale: 1.15,
                                             rotate: 2,
@@ -585,25 +583,6 @@ export default function Game() {
                                             setSelectedSquare(piece.square)
                                             const moves = game.moves({ square: piece.square, verbose: true })
                                             setLegalMoves(moves.map(m => m.to))
-                                        }}
-                                        onDrag={(_, info) => {
-                                            const boardRect = boardRef.current?.getBoundingClientRect()
-                                            if (!boardRect) return
-
-                                            // Use Framer Motion's point (already accounts for drag offset)
-                                            const x = info.point.x
-                                            const y = info.point.y
-
-                                            // Calculate which square the piece center is over
-                                            const relX = x - boardRect.left
-                                            const relY = y - boardRect.top
-
-                                            const colIdx = Math.floor((relX / boardRect.width) * 8)
-                                            const rowIdx = Math.floor((relY / boardRect.height) * 8)
-
-                                            if (colIdx >= 0 && colIdx < 8 && rowIdx >= 0 && rowIdx < 8) {
-                                                // Piece is over a valid square (could add subtle hover effect here)
-                                            }
                                         }}
                                         onDragEnd={(_, info) => {
                                             const boardRect = boardRef.current?.getBoundingClientRect()
@@ -662,8 +641,11 @@ export default function Game() {
                                         }}
                                         style={{
                                             position: 'absolute',
+                                            left: position.left,
+                                            top: position.top,
                                             width: '12.5%',
                                             height: '12.5%',
+                                            zIndex: isDragging ? 9999 : 10,
                                             cursor: canDrag ? 'grab' : 'default',
                                             touchAction: 'none',
                                             pointerEvents: 'auto',
