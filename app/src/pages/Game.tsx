@@ -551,7 +551,7 @@ export default function Game() {
                                     </div>
                                 )}
 
-                                {/* Draggable piece - Magnetic precision */}
+                                {/* Draggable piece - Elite physics */}
                                 <motion.div
                                     drag={canDrag}
                                     dragConstraints={boardRef}
@@ -560,18 +560,21 @@ export default function Game() {
                                     dragSnapToOrigin={false}
                                     animate={{
                                         x: 0,
-                                        y: 0
+                                        y: 0,
+                                        rotate: 0
                                     }}
                                     transition={{
                                         type: 'spring',
-                                        stiffness: 600,
-                                        damping: 45
+                                        stiffness: 400,
+                                        damping: 40,
+                                        mass: 0.8
                                     }}
                                     whileDrag={{
                                         scale: 1.1,
+                                        rotate: 1,
                                         zIndex: 50,
                                         cursor: 'grabbing',
-                                        filter: 'drop-shadow(0 15px 15px rgba(0,0,0,0.5))'
+                                        filter: 'drop-shadow(0 12px 12px rgba(0,0,0,0.5))'
                                     }}
                                     onDragStart={() => {
                                         setDraggedPiece(piece)
