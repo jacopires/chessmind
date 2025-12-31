@@ -67,6 +67,8 @@ export default function Game() {
     const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
     const [legalMoves, setLegalMoves] = useState<Square[]>([])
     const [disableLayout, setDisableLayout] = useState(false)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_wasDraggedInternal, setWasDragged] = useState(false)
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
@@ -570,6 +572,7 @@ export default function Game() {
                                         filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.3))'
                                     } : undefined}
                                     onDragStart={() => {
+                                        setWasDragged(true)
                                         setDisableLayout(true)
                                         setDraggedPiece(piece)
                                         setSelectedSquare(piece.square)
@@ -599,15 +602,19 @@ export default function Game() {
                                                     const isLegal = moves.some(m => m.to === targetSquare)
 
                                                     if (isLegal) {
-                                                        // Valid move - instant lock (disable layout to prevent tremor)
-                                                        setDisableLayout(true)
+                                                        // DRAG MOVE - instant lock, keep layout disabled
                                                         handleMove({ from: piece.square, to: targetSquare })
                                                         setLegalMoves([])
                                                         setSelectedSquare(null)
                                                         setDraggedPiece(null)
-                                                        // Re-enable layout after one frame
-                                                        requestAnimationFrame(() => setDisableLayout(false))
-                                                        return // Exit early - no spring back animation
+                                                        // Re-enable layout after 2 frames (prevents any animation)
+                                                        requestAnimationFrame(() => {
+                                                            requestAnimationFrame(() => {
+                                                                setDisableLayout(false)
+                                                                setWasDragged(false)
+                                                            })
+                                                        })
+                                                        return
                                                     }
                                                 }
                                             }
@@ -615,7 +622,12 @@ export default function Game() {
 
                                         // Invalid move - spring back
                                         setDraggedPiece(null)
-                                        requestAnimationFrame(() => setDisableLayout(false))
+                                        requestAnimationFrame(() => {
+                                            requestAnimationFrame(() => {
+                                                setDisableLayout(false)
+                                                setWasDragged(false)
+                                            })
+                                        })
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation()
