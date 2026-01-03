@@ -117,9 +117,9 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                             }}
                         >
                             {isCapture ? (
-                                <div className={`w-full h-full border-[5px] ${isLightSquare ? 'border-black/25' : 'border-white/25'} rounded-full`} />
+                                <div className="w-full h-full border-[5px] border-slate-900/30 rounded-full" />
                             ) : (
-                                <div className={`w-[20%] h-[20%] ${isLightSquare ? 'bg-black/30' : 'bg-white/30'} rounded-full`} />
+                                <div className="w-[25%] h-[25%] bg-slate-900/40 rounded-full" />
                             )}
                         </div>
                     )
