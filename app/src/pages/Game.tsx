@@ -25,6 +25,7 @@ interface BoardBackgroundProps {
     userColor: 'white' | 'black'
     selectedSquare: Square | null
     legalMoves: Square[]
+    lastMoveHighlight: { from: Square; to: Square } | null
     game: any
     isActive: boolean
     handleMove: (m: { from: Square, to: Square }) => Promise<boolean>
@@ -36,6 +37,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
     userColor,
     selectedSquare,
     legalMoves,
+    lastMoveHighlight,
     game,
     isActive,
     handleMove,
@@ -54,6 +56,8 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                         const square = `${file}${rank}` as Square
                         const isLight = (rankIdx + fileIdx) % 2 === 0
                         const isSelected = selectedSquare === square
+                        const isLastMoveSquare = lastMoveHighlight &&
+                            (lastMoveHighlight.from === square || lastMoveHighlight.to === square)
 
                         return (
                             <div
@@ -83,6 +87,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                                 className={`
                                     ${isLight ? 'bg-slate-300' : 'bg-slate-600'}
                                     ${isSelected ? 'ring-4 ring-purple-500 ring-inset' : ''}
+                                    ${isLastMoveSquare ? (isLight ? 'bg-purple-300/60' : 'bg-purple-400/50') : ''}
                                     cursor-pointer
                                 `}
                             />
@@ -360,6 +365,7 @@ export default function Game() {
     const [preMoveEval, setPreMoveEval] = useState<number | null>(null)
     const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
     const [legalMoves, setLegalMoves] = useState<Square[]>([])
+    const [lastMoveHighlight, setLastMoveHighlight] = useState<{ from: Square; to: Square } | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_wasDraggedInternal, setWasDragged] = useState(false)
     // Track the type of the last move (click or drag) without causing re-renders
@@ -497,6 +503,9 @@ export default function Game() {
             const lastMove = history[history.length - 1]
 
             if (lastMove) {
+                // Update last move highlight
+                setLastMoveHighlight({ from: lastMove.from, to: lastMove.to })
+
                 setPieces(prev => {
                     const board = game.board()
                     const nextPieces: FloatingPiece[] = []
@@ -723,6 +732,7 @@ export default function Game() {
                     userColor={userColor}
                     selectedSquare={selectedSquare}
                     legalMoves={legalMoves}
+                    lastMoveHighlight={lastMoveHighlight}
                     game={game}
                     isActive={isActive}
                     handleMove={handleMove}
