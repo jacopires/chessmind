@@ -20,6 +20,12 @@ interface FloatingPiece {
     key: string
 }
 
+interface Arrow {
+    from: Square
+    to: Square
+    id: string
+}
+
 // Memoized Board Background to prevent re-renders during drag
 interface BoardBackgroundProps {
     userColor: 'white' | 'black'
@@ -31,6 +37,9 @@ interface BoardBackgroundProps {
     handleMove: (m: { from: Square, to: Square }) => Promise<boolean>
     setSelectedSquare: (s: Square | null) => void
     setLegalMoves: (m: Square[]) => void
+    onArrowStart?: (square: Square) => void
+    onArrowEnd?: (square: Square) => void
+    onArrowMove?: (square: Square) => void
 }
 
 const BoardBackground = React.memo<BoardBackgroundProps>(({
@@ -42,7 +51,10 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
     isActive,
     handleMove,
     setSelectedSquare,
-    setLegalMoves
+    setLegalMoves,
+    onArrowStart,
+    onArrowEnd,
+    onArrowMove
 }) => {
     const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -62,6 +74,26 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                         return (
                             <div
                                 key={square}
+                                onMouseDown={(e) => {
+                                    // Right-click to start drawing arrow
+                                    if (e.button === 2 && onArrowStart) {
+                                        e.preventDefault()
+                                        onArrowStart(square)
+                                    }
+                                }}
+                                onMouseUp={(e) => {
+                                    // Right-click release to finish arrow
+                                    if (e.button === 2 && onArrowEnd) {
+                                        e.preventDefault()
+                                        onArrowEnd(square)
+                                    }
+                                }}
+                                onMouseEnter={() => {
+                                    // Update arrow preview while dragging
+                                    if (onArrowMove) {
+                                        onArrowMove(square)
+                                    }
+                                }}
                                 onClick={() => {
                                     if (!isActive) return
                                     const piece = game.get(square)
@@ -326,6 +358,104 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
     )
 }
 
+// Helper: Calculate center of a square in percentage coordinates
+const getSquareCenter = (square: Square, orientation: 'w' | 'b'): { x: number; y: number } => {
+    const file = square.charCodeAt(0) - 'a'.charCodeAt(0)
+    const rank = parseInt(square[1]) - 1
+
+    const x = orientation === 'w' ? file : 7 - file
+    const y = orientation === 'w' ? 7 - rank : rank
+
+    return {
+        x: (x * 12.5) + 6.25, // Center of square (%)
+        y: (y * 12.5) + 6.25
+    }
+}
+
+// Arrow SVG Component
+interface ArrowProps {
+    from: Square
+    to: Square
+    orientation: 'w' | 'b'
+    opacity?: number
+}
+
+const ArrowSVG: React.FC<ArrowProps> = ({ from, to, orientation, opacity = 0.75 }) => {
+    const start = getSquareCenter(from, orientation)
+    const end = getSquareCenter(to, orientation)
+
+    // Calculate angle for arrowhead rotation
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+
+    // Shorten the line slightly so arrowhead doesn't extend past target square
+    const length = Math.sqrt(dx * dx + dy * dy)
+    const shortenBy = 2 // percentage points
+    const ratio = (length - shortenBy) / length
+    const adjustedEndX = start.x + dx * ratio
+    const adjustedEndY = start.y + dy * ratio
+
+    return (
+        <g opacity={opacity}>
+            {/* Arrow line */}
+            <line
+                x1={`${start.x}%`}
+                y1={`${start.y}%`}
+                x2={`${adjustedEndX}%`}
+                y2={`${adjustedEndY}%`}
+                stroke="#a855f7"
+                strokeWidth="10"
+                strokeLinecap="round"
+            />
+            {/* Arrowhead */}
+            <polygon
+                points="-8,-6 0,0 -8,6"
+                fill="#a855f7"
+                transform={`translate(${adjustedEndX}%, ${adjustedEndY}%) rotate(${angle})`}
+                style={{ transformOrigin: 'center' }}
+            />
+        </g>
+    )
+}
+
+// Arrow Overlay Component
+interface ArrowOverlayProps {
+    arrows: Arrow[]
+    drawingArrow: { from: Square; to?: Square } | null
+    orientation: 'w' | 'b'
+}
+
+const ArrowOverlay: React.FC<ArrowOverlayProps> = ({ arrows, drawingArrow, orientation }) => {
+    return (
+        <svg
+            className="absolute inset-0 pointer-events-none"
+            style={{ zIndex: 15 }}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+        >
+            {/* Render finalized arrows */}
+            {arrows.map(arrow => (
+                <ArrowSVG
+                    key={arrow.id}
+                    from={arrow.from}
+                    to={arrow.to}
+                    orientation={orientation}
+                />
+            ))}
+            {/* Render drawing preview */}
+            {drawingArrow && drawingArrow.to && (
+                <ArrowSVG
+                    from={drawingArrow.from}
+                    to={drawingArrow.to}
+                    orientation={orientation}
+                    opacity={0.5}
+                />
+            )}
+        </svg>
+    )
+}
+
 export default function Game() {
     const { id: routeGameId } = useParams<{ id: string }>()
     const { user } = useAuth()
@@ -373,6 +503,8 @@ export default function Game() {
     const [preMoveBestMove, setPreMoveBestMove] = useState<string>('')
     const [legalMoves, setLegalMoves] = useState<Square[]>([])
     const [lastMoveHighlight, setLastMoveHighlight] = useState<{ from: Square; to: Square } | null>(null)
+    const [arrows, setArrows] = useState<Arrow[]>([])
+    const [drawingArrow, setDrawingArrow] = useState<{ from: Square; to?: Square } | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_wasDraggedInternal, setWasDragged] = useState(false)
     // Track the type of the last move (click or drag) without causing re-renders
@@ -728,13 +860,52 @@ export default function Game() {
         navigate('/dashboard')
     }
 
+    // Arrow drawing handlers
+    const handleArrowStart = (square: Square) => {
+        setDrawingArrow({ from: square })
+    }
+
+    const handleArrowMove = (square: Square) => {
+        if (drawingArrow) {
+            setDrawingArrow({ from: drawingArrow.from, to: square })
+        }
+    }
+
+    const handleArrowEnd = (square: Square) => {
+        if (drawingArrow && square !== drawingArrow.from) {
+            // Add arrow to array
+            const newArrow: Arrow = {
+                from: drawingArrow.from,
+                to: square,
+                id: `${drawingArrow.from}-${square}-${Date.now()}`
+            }
+            setArrows(prev => [...prev, newArrow])
+        }
+        setDrawingArrow(null)
+    }
+
     // Render board
     const renderBoard = () => {
         const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
         const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
 
         return (
-            <div ref={boardRef} className="relative w-full h-full">
+            <div
+                ref={boardRef}
+                className="relative w-full h-full"
+                onContextMenu={(e) => {
+                    e.preventDefault()
+                    // Clear arrows on right-click if not drawing
+                    if (!drawingArrow) {
+                        setArrows([])
+                    }
+                }}
+                onClick={() => {
+                    // Clear all arrows on left-click
+                    setArrows([])
+                    setDrawingArrow(null)
+                }}
+            >
                 <BoardBackground
                     userColor={userColor}
                     selectedSquare={selectedSquare}
@@ -745,6 +916,16 @@ export default function Game() {
                     handleMove={handleMove}
                     setSelectedSquare={setSelectedSquare}
                     setLegalMoves={setLegalMoves}
+                    onArrowStart={handleArrowStart}
+                    onArrowEnd={handleArrowEnd}
+                    onArrowMove={handleArrowMove}
+                />
+
+                {/* Arrow Overlay - Analysis arrows drawn with right-click */}
+                <ArrowOverlay
+                    arrows={arrows}
+                    drawingArrow={drawingArrow}
+                    orientation={userColor === 'black' ? 'b' : 'w'}
                 />
 
                 {/* Board Coordinates - Subtle opacity */}
