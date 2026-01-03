@@ -162,31 +162,38 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
     const controls = useAnimation()
     const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false)
 
-    // Determine move type for physics engine
-    const isClickMove = lastMoveType.current === 'click' && !isCurrentlyDragging
+    // Determine if this should animate (only for click moves)
+    const shouldAnimateLayout = lastMoveType.current === 'click' && !isCurrentlyDragging
+
+    // CRITICAL: Reset lastMoveType to 'click' after the layout animation completes
+    // This ensures next click-move will animate properly
+    React.useLayoutEffect(() => {
+        if (lastMoveType.current === 'drag') {
+            // Reset after render so next move animates correctly
+            const timer = setTimeout(() => {
+                lastMoveType.current = 'click'
+            }, 50) // Small delay to ensure layout has settled
+            return () => clearTimeout(timer)
+        }
+    }, [piece.square]) // Trigger when piece position changes
 
     return (
         <motion.div
             layoutId={piece.key}
-            layout="position" // ALWAYS position-only animation
+            layout={shouldAnimateLayout ? "position" : false} // DISABLE layout for drag moves
             animate={controls}
             initial={false}
             drag={canDrag}
             dragConstraints={boardRef}
             dragElastic={0}
             dragMomentum={false}
-            dragSnapToOrigin={false} // Manual control for snap
+            dragSnapToOrigin={false}
 
-            // PHYSICS ENGINE - Layout duration controls the snap vs slide
-            transition={{
-                layout: {
-                    type: isClickMove ? 'spring' : 'tween',
-                    duration: isClickMove ? 0.3 : 0, // INSTANT for drag, smooth for click
-                    stiffness: 300,
-                    damping: 30
-                },
-                default: { duration: 0.1 } // Soft Landing (Shadow/Scale)
-            }}
+            // PHYSICS ENGINE
+            transition={shouldAnimateLayout
+                ? { type: 'spring', stiffness: 300, damping: 30 } // Smooth slide for clicks
+                : { duration: 0 } // INSTANT for drag (no animation at all)
+            }
 
             whileDrag={{
                 scale: 1.15,
