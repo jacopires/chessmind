@@ -97,7 +97,6 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
 
                 {/* Legal move indicators (dots) - Chess.com style */}
                 {legalMoves.map((moveSquare) => {
-                    const isCapture = game.get(moveSquare) !== null
                     const rankIdx = 7 - (moveSquare.charCodeAt(1) - '1'.charCodeAt(0))
                     const fileIdx = moveSquare.charCodeAt(0) - 'a'.charCodeAt(0)
                     const orientation = userColor === 'black' ? 'b' : 'w'
@@ -120,21 +119,13 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                                 zIndex: 5
                             }}
                         >
-                            {isCapture ? (
-                                <div style={{
-                                    width: '85%',
-                                    height: '85%',
-                                    border: '4px solid rgba(15, 23, 42, 0.25)',
-                                    borderRadius: '50%'
-                                }} />
-                            ) : (
-                                <div style={{
-                                    width: '28%',
-                                    height: '28%',
-                                    backgroundColor: 'rgba(15, 23, 42, 0.35)',
-                                    borderRadius: '50%'
-                                }} />
-                            )}
+                            {/* Small solid dot - same for all moves */}
+                            <div style={{
+                                width: '25%',
+                                height: '25%',
+                                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                borderRadius: '50%'
+                            }} />
                         </div>
                     )
                 })}
