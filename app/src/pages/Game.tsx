@@ -956,11 +956,37 @@ export default function Game() {
             <div
                 ref={boardRef}
                 className="relative w-full h-full"
+                // EVENT HANDLERS MOVED TO CONTAINER
                 onContextMenu={(e) => {
                     e.preventDefault()
-                    // Clear all arrows on right-click when there are arrows
-                    if (arrows.length > 0 && !drawingArrow) {
+                    // Right-click clears arrows if not dragging
+                    if (!isDrawingArrow.current && arrows.length > 0) {
                         setArrows([])
+                    }
+                }}
+                onMouseDown={(e) => {
+                    // Right-click: Start Drawing
+                    if (e.button === 2) {
+                        e.preventDefault()
+                        const square = getSquareFromCoords(e.clientX, e.clientY)
+                        if (square) handleArrowStart(square)
+                    }
+                    // Left-click: Clear Arrows (bubbles from piece or board)
+                    if (e.button === 0) {
+                        handleClearArrows()
+                    }
+                }}
+                onMouseMove={(e) => {
+                    if (isDrawingArrow.current) {
+                        const square = getSquareFromCoords(e.clientX, e.clientY)
+                        if (square) handleArrowMove(square)
+                    }
+                }}
+                onMouseUp={(e) => {
+                    if (e.button === 2 && isDrawingArrow.current) {
+                        e.preventDefault()
+                        const square = getSquareFromCoords(e.clientX, e.clientY)
+                        if (square) handleArrowEnd(square)
                     }
                 }}
             >
@@ -976,64 +1002,14 @@ export default function Game() {
                     setLegalMoves={setLegalMoves}
                 />
 
-                {/* Arrow Overlay - Analysis arrows drawn with right-click */}
+                {/* Arrow Overlay - Analysis arrows */}
                 <ArrowOverlay
                     arrows={arrows}
                     drawingArrow={drawingArrow}
                     orientation={userColor === 'black' ? 'b' : 'w'}
                 />
 
-                {/* Arrow Input Layer - Gesture capture above all elements */}
-                <div
-                    className="absolute inset-0 pointer-events-auto"
-                    style={{ zIndex: 50 }}
-                    onMouseDown={(e) => {
-                        if (e.button === 2) {
-                            // Right-click: start drawing arrow
-                            e.preventDefault()
-                            const square = getSquareFromCoords(e.clientX, e.clientY)
-                            if (square) {
-                                handleArrowStart(square)
-                            }
-                        } else if (e.button === 0) {
-                            // Left-click: clear arrows and pass through to pieces
-                            handleClearArrows()
-                            // Make layer transparent to allow piece interaction
-                            e.currentTarget.style.pointerEvents = 'none'
-                            setTimeout(() => {
-                                if (e.currentTarget) {
-                                    e.currentTarget.style.pointerEvents = 'auto'
-                                }
-                            }, 0)
-                        }
-                    }}
-                    onMouseMove={(e) => {
-                        if (isDrawingArrow.current) {
-                            const square = getSquareFromCoords(e.clientX, e.clientY)
-                            if (square) {
-                                handleArrowMove(square)
-                            }
-                        }
-                    }}
-                    onMouseUp={(e) => {
-                        if (e.button === 2 && isDrawingArrow.current) {
-                            // Right-click release: finalize arrow
-                            e.preventDefault()
-                            const square = getSquareFromCoords(e.clientX, e.clientY)
-                            if (square) {
-                                handleArrowEnd(square)
-                            }
-                        }
-                    }}
-                    onContextMenu={(e) => {
-                        // Prevent context menu
-                        e.preventDefault()
-                        // Clear arrows on right-click when not drawing
-                        if (!isDrawingArrow.current && arrows.length > 0) {
-                            setArrows([])
-                        }
-                    }}
-                />
+                {/* REMOVED: Blocking Arrow Input Layer */}
 
                 {/* Board Coordinates - Subtle opacity */}
                 <div className="absolute top-0 right-0 bottom-0 pointer-events-none opacity-30">
