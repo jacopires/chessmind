@@ -95,7 +95,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                     })
                 )}
 
-                {/* Legal move indicators (circles) */}
+                {/* Legal move indicators (dots) - Chess.com style */}
                 {legalMoves.map((moveSquare) => {
                     const isCapture = game.get(moveSquare) !== null
                     const rankIdx = 7 - (moveSquare.charCodeAt(1) - '1'.charCodeAt(0))
@@ -103,23 +103,37 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                     const orientation = userColor === 'black' ? 'b' : 'w'
                     const x = orientation === 'w' ? fileIdx : 7 - fileIdx
                     const y = orientation === 'w' ? rankIdx : 7 - rankIdx
-                    const isLightSquare = (x + y) % 2 === 0
 
                     return (
                         <div
                             key={`hint-${moveSquare}`}
-                            className="absolute pointer-events-none flex items-center justify-center z-[5]"
                             style={{
+                                position: 'absolute',
                                 left: `${x * 12.5}%`,
                                 top: `${y * 12.5}%`,
                                 width: '12.5%',
-                                height: '12.5%'
+                                height: '12.5%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                pointerEvents: 'none',
+                                zIndex: 5
                             }}
                         >
                             {isCapture ? (
-                                <div className="w-full h-full border-[5px] border-slate-900/30 rounded-full" />
+                                <div style={{
+                                    width: '85%',
+                                    height: '85%',
+                                    border: '4px solid rgba(15, 23, 42, 0.25)',
+                                    borderRadius: '50%'
+                                }} />
                             ) : (
-                                <div className="w-[25%] h-[25%] bg-slate-900/40 rounded-full" />
+                                <div style={{
+                                    width: '28%',
+                                    height: '28%',
+                                    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+                                    borderRadius: '50%'
+                                }} />
                             )}
                         </div>
                     )
