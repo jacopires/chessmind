@@ -39,7 +39,6 @@ interface BoardBackgroundProps {
     setLegalMoves: (m: Square[]) => void
     onArrowStart?: (square: Square) => void
     onArrowEnd?: (square: Square) => void
-    onArrowMove?: (square: Square) => void
 }
 
 const BoardBackground = React.memo<BoardBackgroundProps>(({
@@ -53,8 +52,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
     setSelectedSquare,
     setLegalMoves,
     onArrowStart,
-    onArrowEnd,
-    onArrowMove
+    onArrowEnd
 }) => {
     const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -91,10 +89,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                                     }
                                 }}
                                 onMouseEnter={() => {
-                                    // Update arrow preview while dragging
-                                    if (onArrowMove) {
-                                        onArrowMove(square)
-                                    }
+                                    // No longer needed - using global mousemove
                                 }}
                                 onClick={() => {
                                     if (!isActive) return
@@ -870,14 +865,6 @@ export default function Game() {
         setDrawingArrow({ from: square })
     }
 
-    const handleArrowMove = (square: Square) => {
-        // Use ref for immediate check instead of state
-        if (isDrawingArrow.current && drawingArrow) {
-            console.log('Arrow move:', square)
-            setDrawingArrow({ from: drawingArrow.from, to: square })
-        }
-    }
-
     const handleArrowEnd = (square: Square) => {
         console.log('Arrow end:', square, 'from:', drawingArrow?.from)
         isDrawingArrow.current = false
@@ -893,6 +880,40 @@ export default function Game() {
         }
         setDrawingArrow(null)
     }
+
+    // Global mouse tracking for arrow preview
+    useEffect(() => {
+        if (!isDrawingArrow.current || !boardRef.current) return
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDrawingArrow.current || !drawingArrow || !boardRef.current) return
+
+            const boardRect = boardRef.current.getBoundingClientRect()
+            const x = e.clientX - boardRect.left
+            const y = e.clientY - boardRect.top
+
+            // Calculate which square the mouse is over
+            const squareSize = boardRect.width / 8
+            const fileIndex = Math.floor(x / squareSize)
+            const rankIndex = Math.floor(y / squareSize)
+
+            if (fileIndex >= 0 && fileIndex < 8 && rankIndex >= 0 && rankIndex < 8) {
+                const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+                const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
+
+                const file = files[fileIndex]
+                const rank = ranks[rankIndex]
+                const square = (file + rank) as Square
+
+                console.log('Mouse over square:', square)
+                setDrawingArrow({ from: drawingArrow.from, to: square })
+            }
+        }
+
+        document.addEventListener('mousemove', handleMouseMove)
+        return () => document.removeEventListener('mousemove', handleMouseMove)
+    }, [drawingArrow, userColor])
+
 
     // Render board
     const renderBoard = () => {
@@ -923,7 +944,6 @@ export default function Game() {
                     setLegalMoves={setLegalMoves}
                     onArrowStart={handleArrowStart}
                     onArrowEnd={handleArrowEnd}
-                    onArrowMove={handleArrowMove}
                 />
 
                 {/* Arrow Overlay - Analysis arrows drawn with right-click */}
