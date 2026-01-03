@@ -862,16 +862,19 @@ export default function Game() {
 
     // Arrow drawing handlers
     const handleArrowStart = (square: Square) => {
+        console.log('Arrow start:', square)
         setDrawingArrow({ from: square })
     }
 
     const handleArrowMove = (square: Square) => {
         if (drawingArrow) {
+            console.log('Arrow move:', square)
             setDrawingArrow({ from: drawingArrow.from, to: square })
         }
     }
 
     const handleArrowEnd = (square: Square) => {
+        console.log('Arrow end:', square, 'from:', drawingArrow?.from)
         if (drawingArrow && square !== drawingArrow.from) {
             // Add arrow to array
             const newArrow: Arrow = {
@@ -879,6 +882,7 @@ export default function Game() {
                 to: square,
                 id: `${drawingArrow.from}-${square}-${Date.now()}`
             }
+            console.log('Adding arrow:', newArrow)
             setArrows(prev => [...prev, newArrow])
         }
         setDrawingArrow(null)
@@ -895,15 +899,6 @@ export default function Game() {
                 className="relative w-full h-full"
                 onContextMenu={(e) => {
                     e.preventDefault()
-                    // Clear arrows on right-click if not drawing
-                    if (!drawingArrow) {
-                        setArrows([])
-                    }
-                }}
-                onClick={() => {
-                    // Clear all arrows on left-click
-                    setArrows([])
-                    setDrawingArrow(null)
                 }}
             >
                 <BoardBackground
