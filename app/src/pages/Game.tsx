@@ -407,13 +407,12 @@ const ArrowSVG: React.FC<ArrowProps> = ({ from, to, orientation, opacity = 0.75 
                 x2={`${adjustedEndX}%`}
                 y2={`${adjustedEndY}%`}
                 stroke="#a855f7"
-                strokeWidth="0.8"
+                strokeWidth="3"
                 strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
             />
             {/* Arrowhead */}
             <polygon
-                points="-1.2,-0.8 0,0 -1.2,0.8"
+                points="-12,-8 0,0 -12,8"
                 fill="#a855f7"
                 transform={`translate(${adjustedEndX}%, ${adjustedEndY}%) rotate(${angle})`}
                 style={{ transformOrigin: 'center' }}
@@ -902,6 +901,10 @@ export default function Game() {
                 className="relative w-full h-full"
                 onContextMenu={(e) => {
                     e.preventDefault()
+                    // Clear all arrows on right-click when there are arrows
+                    if (arrows.length > 0 && !drawingArrow) {
+                        setArrows([])
+                    }
                 }}
             >
                 <BoardBackground
