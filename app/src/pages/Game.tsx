@@ -407,12 +407,13 @@ const ArrowSVG: React.FC<ArrowProps> = ({ from, to, orientation, opacity = 0.75 
                 x2={`${adjustedEndX}%`}
                 y2={`${adjustedEndY}%`}
                 stroke="#a855f7"
-                strokeWidth="10"
+                strokeWidth="0.8"
                 strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
             />
             {/* Arrowhead */}
             <polygon
-                points="-8,-6 0,0 -8,6"
+                points="-1.2,-0.8 0,0 -1.2,0.8"
                 fill="#a855f7"
                 transform={`translate(${adjustedEndX}%, ${adjustedEndY}%) rotate(${angle})`}
                 style={{ transformOrigin: 'center' }}
