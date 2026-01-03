@@ -511,6 +511,7 @@ export default function Game() {
     const [_wasDraggedInternal, setWasDragged] = useState(false)
     // Track the type of the last move (click or drag) without causing re-renders
     const lastMoveType = useRef<'click' | 'drag'>('click')
+    const isDrawingArrow = useRef(false)
 
     // Stockfish Integration
     const { isReady, evaluation, bestMove, evaluatePosition } = useStockfish()
@@ -865,11 +866,13 @@ export default function Game() {
     // Arrow drawing handlers
     const handleArrowStart = (square: Square) => {
         console.log('Arrow start:', square)
+        isDrawingArrow.current = true
         setDrawingArrow({ from: square })
     }
 
     const handleArrowMove = (square: Square) => {
-        if (drawingArrow) {
+        // Use ref for immediate check instead of state
+        if (isDrawingArrow.current && drawingArrow) {
             console.log('Arrow move:', square)
             setDrawingArrow({ from: drawingArrow.from, to: square })
         }
@@ -877,6 +880,7 @@ export default function Game() {
 
     const handleArrowEnd = (square: Square) => {
         console.log('Arrow end:', square, 'from:', drawingArrow?.from)
+        isDrawingArrow.current = false
         if (drawingArrow && square !== drawingArrow.from) {
             // Add arrow to array
             const newArrow: Arrow = {
