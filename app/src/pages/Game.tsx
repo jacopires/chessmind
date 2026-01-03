@@ -161,32 +161,33 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
 }) => {
     const controls = useAnimation()
     const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false)
-    const [animationKey, setAnimationKey] = useState(0) // Force remount on drag
+    const [forceRemount, setForceRemount] = useState(0) // Increment after drag to force remount
 
-    // Determine if this should animate (only for click moves)
-    const shouldAnimateLayout = lastMoveType.current === 'click' && !isCurrentlyDragging
+    // KEY STABILITY: During drag, we ALWAYS use the original key
+    // After drag completes, we use a modified key to force remount (no animation)
+    // For click moves, we use original key (allows animation)
+    const wasDragMove = lastMoveType.current === 'drag'
+    const effectiveKey = wasDragMove ? `${piece.key}-${forceRemount}` : piece.key
 
-    // The key trick: For drag moves, we use a different key to force remount
-    // This completely bypasses Framer Motion's animation system
-    const effectiveKey = shouldAnimateLayout ? piece.key : `${piece.key}-${animationKey}`
+    // Layout animation only for click moves (not during or after drag)
+    const shouldAnimateLayout = !wasDragMove && !isCurrentlyDragging
 
-    // CRITICAL: Reset lastMoveType to 'click' after the layout animation completes
+    // Reset lastMoveType after drag move completes
     React.useLayoutEffect(() => {
-        if (lastMoveType.current === 'drag') {
-            // Increment animation key to force remount on next drag
-            setAnimationKey(prev => prev + 1)
-            // Reset after render so next move animates correctly
-            const timer = setTimeout(() => {
+        if (lastMoveType.current === 'drag' && !isCurrentlyDragging) {
+            // Increment to force remount on next render cycle
+            setForceRemount(prev => prev + 1)
+            // Reset for next move
+            requestAnimationFrame(() => {
                 lastMoveType.current = 'click'
-            }, 16) // Single frame
-            return () => clearTimeout(timer)
+            })
         }
-    }, [piece.square])
+    }, [piece.square, isCurrentlyDragging])
 
     return (
         <motion.div
-            key={effectiveKey} // CRITICAL: Different key for drag = remount = no animation
-            layoutId={shouldAnimateLayout ? piece.key : undefined} // Disable layoutId for drag
+            key={effectiveKey}
+            layoutId={shouldAnimateLayout ? piece.key : undefined}
             layout={shouldAnimateLayout ? "position" : false}
             animate={controls}
             initial={false}
