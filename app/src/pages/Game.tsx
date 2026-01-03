@@ -37,8 +37,6 @@ interface BoardBackgroundProps {
     handleMove: (m: { from: Square, to: Square }) => Promise<boolean>
     setSelectedSquare: (s: Square | null) => void
     setLegalMoves: (m: Square[]) => void
-    onArrowStart?: (square: Square) => void
-    onArrowEnd?: (square: Square) => void
 }
 
 const BoardBackground = React.memo<BoardBackgroundProps>(({
@@ -50,9 +48,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
     isActive,
     handleMove,
     setSelectedSquare,
-    setLegalMoves,
-    onArrowStart,
-    onArrowEnd
+    setLegalMoves
 }) => {
     const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -71,26 +67,6 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
 
                         return (
                             <div
-                                key={square}
-                                onContextMenu={(e) => {
-                                    // Right-click to start drawing arrow
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    if (onArrowStart) {
-                                        onArrowStart(square)
-                                    }
-                                }}
-                                onMouseUp={(e) => {
-                                    // Right-click release to finish arrow
-                                    if (e.button === 2 && onArrowEnd) {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        onArrowEnd(square)
-                                    }
-                                }}
-                                onMouseEnter={() => {
-                                    // No longer needed - using global mousemove
-                                }}
                                 onClick={() => {
                                     if (!isActive) return
                                     const piece = game.get(square)
@@ -377,43 +353,101 @@ interface ArrowProps {
     opacity?: number
 }
 
-const ArrowSVG: React.FC<ArrowProps> = ({ from, to, orientation, opacity = 0.75 }) => {
+const ArrowSVG: React.FC<ArrowProps> = ({ from, to, orientation, opacity = 0.8 }) => {
     const start = getSquareCenter(from, orientation)
     const end = getSquareCenter(to, orientation)
 
-    // Calculate angle for arrowhead rotation
-    const dx = end.x - start.x
-    const dy = end.y - start.y
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+    // Calculate file and rank differences for knight detection
+    const fromFile = from.charCodeAt(0) - 'a'.charCodeAt(0)
+    const fromRank = parseInt(from[1]) - 1
+    const toFile = to.charCodeAt(0) - 'a'.charCodeAt(0)
+    const toRank = parseInt(to[1]) - 1
 
-    // Shorten the line slightly so arrowhead doesn't extend past target square
-    const length = Math.sqrt(dx * dx + dy * dy)
-    const shortenBy = 2 // percentage points
-    const ratio = (length - shortenBy) / length
-    const adjustedEndX = start.x + dx * ratio
-    const adjustedEndY = start.y + dy * ratio
+    const fileDiff = Math.abs(toFile - fromFile)
+    const rankDiff = Math.abs(toRank - fromRank)
 
-    return (
-        <g opacity={opacity}>
-            {/* Arrow line */}
-            <line
-                x1={`${start.x}%`}
-                y1={`${start.y}%`}
-                x2={`${adjustedEndX}%`}
-                y2={`${adjustedEndY}%`}
-                stroke="#a855f7"
-                strokeWidth="3"
-                strokeLinecap="round"
-            />
-            {/* Arrowhead */}
-            <polygon
-                points="-12,-8 0,0 -12,8"
-                fill="#a855f7"
-                transform={`translate(${adjustedEndX}%, ${adjustedEndY}%) rotate(${angle})`}
-                style={{ transformOrigin: 'center' }}
-            />
-        </g>
-    )
+    // Knight move detection: (1,2) or (2,1)
+    const isKnightMove = (fileDiff === 1 && rankDiff === 2) || (fileDiff === 2 && rankDiff === 1)
+
+    if (isKnightMove) {
+        // L-shaped arrow for knight moves
+        // Calculate elbow point (the corner of the L)
+        // The elbow is at the end of the longer segment (2 squares)
+        const elbowFile = fileDiff === 2
+            ? (toFile > fromFile ? fromFile + 2 : fromFile - 2)
+            : (toFile > fromFile ? fromFile + 1 : fromFile - 1)
+        const elbowRank = rankDiff === 2
+            ? (toRank > fromRank ? fromRank + 2 : fromRank - 2)
+            : (toRank > fromRank ? fromRank + 1 : fromRank - 1)
+
+        const elbowSquare = String.fromCharCode('a'.charCodeAt(0) + elbowFile) + (elbowRank + 1) as Square
+        const elbow = getSquareCenter(elbowSquare, orientation)
+
+        // Calculate angle for arrowhead (from elbow to end)
+        const dx = end.x - elbow.x
+        const dy = end.y - elbow.y
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+
+        // Shorten the last segment slightly for arrowhead
+        const lastSegmentLength = Math.sqrt(dx * dx + dy * dy)
+        const shortenBy = 2
+        const ratio = (lastSegmentLength - shortenBy) / lastSegmentLength
+        const adjustedEndX = elbow.x + dx * ratio
+        const adjustedEndY = elbow.y + dy * ratio
+
+        return (
+            <g opacity={opacity}>
+                {/* L-shaped polyline */}
+                <polyline
+                    points={`${start.x},${start.y} ${elbow.x},${elbow.y} ${adjustedEndX},${adjustedEndY}`}
+                    stroke="#a855f7"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                />
+                {/* Arrowhead */}
+                <polygon
+                    points="-12,-8 0,0 -12,8"
+                    fill="#a855f7"
+                    transform={`translate(${adjustedEndX}%, ${adjustedEndY}%) rotate(${angle})`}
+                />
+            </g>
+        )
+    } else {
+        // Straight arrow for non-knight moves
+        const dx = end.x - start.x
+        const dy = end.y - start.y
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+
+        // Shorten line for arrowhead
+        const length = Math.sqrt(dx * dx + dy * dy)
+        const shortenBy = 2
+        const ratio = (length - shortenBy) / length
+        const adjustedEndX = start.x + dx * ratio
+        const adjustedEndY = start.y + dy * ratio
+
+        return (
+            <g opacity={opacity}>
+                {/* Straight line */}
+                <line
+                    x1={`${start.x}%`}
+                    y1={`${start.y}%`}
+                    x2={`${adjustedEndX}%`}
+                    y2={`${adjustedEndY}%`}
+                    stroke="#a855f7"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                />
+                {/* Arrowhead */}
+                <polygon
+                    points="-12,-8 0,0 -12,8"
+                    fill="#a855f7"
+                    transform={`translate(${adjustedEndX}%, ${adjustedEndY}%) rotate(${angle})`}
+                />
+            </g>
+        )
+    }
 }
 
 // Arrow Overlay Component
@@ -858,62 +892,60 @@ export default function Game() {
         navigate('/dashboard')
     }
 
+    // Helper: Convert client coordinates to board square
+    const getSquareFromCoords = (clientX: number, clientY: number): Square | null => {
+        if (!boardRef.current) return null
+
+        const rect = boardRef.current.getBoundingClientRect()
+        const x = clientX - rect.left
+        const y = clientY - rect.top
+
+        // Check if within bounds
+        if (x < 0 || x > rect.width || y < 0 || y > rect.height) return null
+
+        const squareSize = rect.width / 8
+        const fileIndex = Math.floor(x / squareSize)
+        const rankIndex = Math.floor(y / squareSize)
+
+        if (fileIndex < 0 || fileIndex >= 8 || rankIndex < 0 || rankIndex >= 8) return null
+
+        const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+        const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
+
+        return (files[fileIndex] + ranks[rankIndex]) as Square
+    }
+
     // Arrow drawing handlers
     const handleArrowStart = (square: Square) => {
-        console.log('Arrow start:', square)
         isDrawingArrow.current = true
         setDrawingArrow({ from: square })
     }
 
     const handleArrowEnd = (square: Square) => {
-        console.log('Arrow end:', square, 'from:', drawingArrow?.from)
         isDrawingArrow.current = false
         if (drawingArrow && square !== drawingArrow.from) {
-            // Add arrow to array
             const newArrow: Arrow = {
                 from: drawingArrow.from,
                 to: square,
                 id: `${drawingArrow.from}-${square}-${Date.now()}`
             }
-            console.log('Adding arrow:', newArrow)
             setArrows(prev => [...prev, newArrow])
         }
         setDrawingArrow(null)
     }
 
-    // Global mouse tracking for arrow preview
-    useEffect(() => {
-        if (!isDrawingArrow.current || !boardRef.current) return
-
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!isDrawingArrow.current || !drawingArrow || !boardRef.current) return
-
-            const boardRect = boardRef.current.getBoundingClientRect()
-            const x = e.clientX - boardRect.left
-            const y = e.clientY - boardRect.top
-
-            // Calculate which square the mouse is over
-            const squareSize = boardRect.width / 8
-            const fileIndex = Math.floor(x / squareSize)
-            const rankIndex = Math.floor(y / squareSize)
-
-            if (fileIndex >= 0 && fileIndex < 8 && rankIndex >= 0 && rankIndex < 8) {
-                const files = userColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-                const ranks = userColor === 'black' ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1']
-
-                const file = files[fileIndex]
-                const rank = ranks[rankIndex]
-                const square = (file + rank) as Square
-
-                console.log('Mouse over square:', square)
-                setDrawingArrow({ from: drawingArrow.from, to: square })
-            }
+    const handleArrowMove = (square: Square) => {
+        if (isDrawingArrow.current && drawingArrow) {
+            setDrawingArrow({ from: drawingArrow.from, to: square })
         }
+    }
 
-        document.addEventListener('mousemove', handleMouseMove)
-        return () => document.removeEventListener('mousemove', handleMouseMove)
-    }, [drawingArrow, userColor])
-
+    // Clear arrows on left-click
+    const handleClearArrows = () => {
+        if (arrows.length > 0) {
+            setArrows([])
+        }
+    }
 
     // Render board
     const renderBoard = () => {
@@ -942,8 +974,6 @@ export default function Game() {
                     handleMove={handleMove}
                     setSelectedSquare={setSelectedSquare}
                     setLegalMoves={setLegalMoves}
-                    onArrowStart={handleArrowStart}
-                    onArrowEnd={handleArrowEnd}
                 />
 
                 {/* Arrow Overlay - Analysis arrows drawn with right-click */}
@@ -951,6 +981,58 @@ export default function Game() {
                     arrows={arrows}
                     drawingArrow={drawingArrow}
                     orientation={userColor === 'black' ? 'b' : 'w'}
+                />
+
+                {/* Arrow Input Layer - Gesture capture above all elements */}
+                <div
+                    className="absolute inset-0 pointer-events-auto"
+                    style={{ zIndex: 50 }}
+                    onMouseDown={(e) => {
+                        if (e.button === 2) {
+                            // Right-click: start drawing arrow
+                            e.preventDefault()
+                            const square = getSquareFromCoords(e.clientX, e.clientY)
+                            if (square) {
+                                handleArrowStart(square)
+                            }
+                        } else if (e.button === 0) {
+                            // Left-click: clear arrows and pass through to pieces
+                            handleClearArrows()
+                            // Make layer transparent to allow piece interaction
+                            e.currentTarget.style.pointerEvents = 'none'
+                            setTimeout(() => {
+                                if (e.currentTarget) {
+                                    e.currentTarget.style.pointerEvents = 'auto'
+                                }
+                            }, 0)
+                        }
+                    }}
+                    onMouseMove={(e) => {
+                        if (isDrawingArrow.current) {
+                            const square = getSquareFromCoords(e.clientX, e.clientY)
+                            if (square) {
+                                handleArrowMove(square)
+                            }
+                        }
+                    }}
+                    onMouseUp={(e) => {
+                        if (e.button === 2 && isDrawingArrow.current) {
+                            // Right-click release: finalize arrow
+                            e.preventDefault()
+                            const square = getSquareFromCoords(e.clientX, e.clientY)
+                            if (square) {
+                                handleArrowEnd(square)
+                            }
+                        }
+                    }}
+                    onContextMenu={(e) => {
+                        // Prevent context menu
+                        e.preventDefault()
+                        // Clear arrows on right-click when not drawing
+                        if (!isDrawingArrow.current && arrows.length > 0) {
+                            setArrows([])
+                        }
+                    }}
                 />
 
                 {/* Board Coordinates - Subtle opacity */}
