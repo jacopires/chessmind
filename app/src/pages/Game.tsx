@@ -85,10 +85,12 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                                     }
                                 }}
                                 className={`
-                                    ${isLight ? 'bg-slate-300' : 'bg-slate-600'}
-                                    ${isSelected ? 'ring-4 ring-purple-500 ring-inset' : ''}
-                                    ${isLastMoveSquare ? (isLight ? 'bg-purple-300/60' : 'bg-purple-400/50') : ''}
                                     cursor-pointer
+                                    ${isSelected ? 'ring-4 ring-purple-500 ring-inset' : ''}
+                                    ${isLastMoveSquare
+                                        ? (isLight ? 'bg-purple-300/60' : 'bg-purple-400/50')
+                                        : (isLight ? 'bg-slate-300' : 'bg-slate-600')
+                                    }
                                 `}
                             />
                         )
