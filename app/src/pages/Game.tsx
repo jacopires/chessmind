@@ -161,26 +161,33 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
 }) => {
     const controls = useAnimation()
     const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false)
+    const [animationKey, setAnimationKey] = useState(0) // Force remount on drag
 
     // Determine if this should animate (only for click moves)
     const shouldAnimateLayout = lastMoveType.current === 'click' && !isCurrentlyDragging
 
+    // The key trick: For drag moves, we use a different key to force remount
+    // This completely bypasses Framer Motion's animation system
+    const effectiveKey = shouldAnimateLayout ? piece.key : `${piece.key}-${animationKey}`
+
     // CRITICAL: Reset lastMoveType to 'click' after the layout animation completes
-    // This ensures next click-move will animate properly
     React.useLayoutEffect(() => {
         if (lastMoveType.current === 'drag') {
+            // Increment animation key to force remount on next drag
+            setAnimationKey(prev => prev + 1)
             // Reset after render so next move animates correctly
             const timer = setTimeout(() => {
                 lastMoveType.current = 'click'
-            }, 50) // Small delay to ensure layout has settled
+            }, 16) // Single frame
             return () => clearTimeout(timer)
         }
-    }, [piece.square]) // Trigger when piece position changes
+    }, [piece.square])
 
     return (
         <motion.div
-            layoutId={piece.key}
-            layout={shouldAnimateLayout ? "position" : false} // DISABLE layout for drag moves
+            key={effectiveKey} // CRITICAL: Different key for drag = remount = no animation
+            layoutId={shouldAnimateLayout ? piece.key : undefined} // Disable layoutId for drag
+            layout={shouldAnimateLayout ? "position" : false}
             animate={controls}
             initial={false}
             drag={canDrag}
@@ -191,8 +198,8 @@ const DraggableChessPiece: React.FC<DraggablePieceProps> = ({
 
             // PHYSICS ENGINE
             transition={shouldAnimateLayout
-                ? { type: 'spring', stiffness: 300, damping: 30 } // Smooth slide for clicks
-                : { duration: 0 } // INSTANT for drag (no animation at all)
+                ? { type: 'spring', stiffness: 300, damping: 30 }
+                : { duration: 0 }
             }
 
             whileDrag={{
