@@ -74,10 +74,11 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                         return (
                             <div
                                 key={square}
-                                onMouseDown={(e) => {
+                                onContextMenu={(e) => {
                                     // Right-click to start drawing arrow
-                                    if (e.button === 2 && onArrowStart) {
-                                        e.preventDefault()
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    if (onArrowStart) {
                                         onArrowStart(square)
                                     }
                                 }}
@@ -85,6 +86,7 @@ const BoardBackground = React.memo<BoardBackgroundProps>(({
                                     // Right-click release to finish arrow
                                     if (e.button === 2 && onArrowEnd) {
                                         e.preventDefault()
+                                        e.stopPropagation()
                                         onArrowEnd(square)
                                     }
                                 }}
